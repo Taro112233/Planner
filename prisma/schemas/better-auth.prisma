@@ -1,0 +1,86 @@
+// prisma/schemas/better-auth.prisma
+// ===== Better Auth + NextJS Starter Fields =====
+
+model User {
+  id            String    @id @default(cuid())
+  name          String                          // Required by Better Auth
+  email         String    @unique               // Required by Better Auth
+  emailVerified Boolean   @default(false)
+  image         String?
+  
+  // NextJS Starter: เปลี่ยนเป็น optional พร้อม default value
+  firstName     String    @default("")          // ✅ Changed to optional
+  lastName      String    @default("")          // ✅ Changed to optional
+  phone         String?
+  role          UserRole  @default(USER)        // ✅ Using enum instead of String
+  status        String    @default("ACTIVE")    // "ACTIVE" | "SUSPENDED" | "INACTIVE"
+  isActive      Boolean   @default(true)
+  lastLogin     DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Better Auth relations
+  sessions      Session[]
+  accounts      Account[]
+  
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?   // Better Auth เก็บ password hash ที่นี่
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  @@index([userId])
+  @@unique([providerId, accountId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@unique([identifier, value])
+  @@map("verifications")
+}
+
+// ===== USER ROLE ENUM =====
+enum UserRole {
+  USER
+  ADMIN
+  SUPERADMIN
+}

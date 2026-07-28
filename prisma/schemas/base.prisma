@@ -1,0 +1,55 @@
+// prisma/schemas/base.prisma
+// Domain-agnostic models and enums shared across the application.
+// This file is merged into schema.prisma by `pnpm schema:merge`.
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+/**
+ * Generic entity lifecycle status.
+ * Use this for any model that supports soft-archiving or deactivation.
+ */
+enum EntityStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+// ─────────────────────────────────────────────
+// SelectOption — configurable dropdown values
+// ─────────────────────────────────────────────
+
+/**
+ * Runtime-editable dropdown / select options grouped by category.
+ *
+ * Instead of hardcoding option lists in the UI or creating a separate DB
+ * table for every dropdown, a single SelectOption table lets admins add,
+ * edit, or disable options without schema migrations.
+ *
+ * Example categories: "country", "priority", "tag", "status-reason"
+ *
+ * Usage:
+ *   GET  /api/select-options?category=priority
+ *   POST /api/select-options { category, value, label, sortOrder }
+ */
+model SelectOption {
+  id        String  @id @default(cuid())
+  /// Logical grouping key (e.g., "priority", "tag", "country")
+  category  String
+  /// Stored value sent to / received from the API
+  value     String
+  /// Human-readable label shown in the UI
+  label     String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+  /// Optional arbitrary JSON metadata (e.g., color hex, icon name)
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([category, value])
+  @@index([category, isActive])
+  @@map("select_options")
+}
