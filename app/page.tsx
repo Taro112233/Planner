@@ -102,7 +102,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary rounded-full border border-border-primary">
               <Sparkles className="w-4 h-4 text-brand-primary" />
               <span className="text-sm font-medium text-content-primary">
-                Production-Ready Template
+                Taro First Branch
               </span>
             </div>
 
