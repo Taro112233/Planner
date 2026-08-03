@@ -1,6 +1,6 @@
 // This file is auto-generated. Do not edit manually.
 // Edit files in prisma/schemas/ directory instead.
-// Last generated: 2026-08-03T13:50:12.614Z
+// Last generated: 2026-08-03T16:13:13.927Z
 
 generator client {
   provider        = "prisma-client-js"
@@ -193,6 +193,9 @@ model OrganizationUser {
   organizationId String
   userId         String
 
+  firstName     String    @default("")          // ✅ Changed to optional
+  lastName      String    @default("")          // ✅ Changed to optional
+  
   role   OrganizationRole       @default(MEMBER)
   status OrganizationUserStatus @default(ACTIVE)
 
