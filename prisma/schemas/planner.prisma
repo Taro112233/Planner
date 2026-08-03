@@ -1,0 +1,63 @@
+// prisma/schemas/planner.prisma
+// Multi-tenant Planner — organization and board/group models.
+// Loaded natively with the other fragments in this directory.
+
+// ─────────────────────────────────────────────
+// Organization — top-level multi-tenant boundary
+// ─────────────────────────────────────────────
+
+/**
+ * Each organization is an isolated tenant.
+ * All planner data is scoped to one organization.
+ */
+model Organization {
+  id     String       @id @default(cuid())
+  name   String
+  slug   String       @unique
+  status EntityStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users      OrganizationUser[]
+  groups     Group[]
+  badges     TaskBadge[]
+  activities TaskActivity[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+// ─────────────────────────────────────────────
+// Group — Kanban column / category within an org
+// ─────────────────────────────────────────────
+
+/**
+ * A Group is a Kanban column or logical category within one Organization.
+ * Display and WIP settings are explicit columns rather than duplicated JSON.
+ */
+model Group {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  color       String? // Hex or semantic color token for the column header
+  icon        String? // Lucide/custom icon name
+  wipLimit    Int?
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  taskItems TaskItem[]
+
+  @@unique([organizationId, name])
+  // Composite tenant key used by TaskItem to prevent cross-org relations.
+  @@unique([id, organizationId])
+  @@index([organizationId, sortOrder])
+  @@map("groups")
+}

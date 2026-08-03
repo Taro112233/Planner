@@ -1,0 +1,221 @@
+// prisma/schemas/task-item.prisma
+// Current Planner task concept:
+// TaskItem is the assignable card; Subtask is a non-assignable 3-level tree.
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityAction {
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_STATUS_CHANGED
+  TASK_ASSIGNED
+  TASK_UNASSIGNED
+  TASK_MOVED
+  TASK_DELETED
+  SUBTASK_CREATED
+  SUBTASK_RENAMED
+  SUBTASK_CHECKED
+  SUBTASK_UNCHECKED
+  SUBTASK_MOVED
+  SUBTASK_DELETED
+}
+
+// ─────────────────────────────────────────────
+// TaskItem — assignable Kanban card
+// ─────────────────────────────────────────────
+
+model TaskItem {
+  id             String @id @default(cuid())
+  organizationId String
+  groupId        String
+
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  position    Decimal      @db.Decimal(20, 10)
+
+  startDate DateTime? @db.Timestamptz(6)
+  dueDate   DateTime? @db.Timestamptz(6)
+
+  // Denormalized counters include root subtasks (depth = 0) only.
+  subtaskTotal Int @default(0)
+  subtaskDone  Int @default(0)
+
+  createdById String
+  // Optimistic concurrency token for simultaneous edits to the same card.
+  version     Int    @default(1)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  group   Group            @relation(fields: [groupId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  creator OrganizationUser @relation("TaskItemCreator", fields: [createdById, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  subtasks  Subtask[]
+  assignees TaskAssignee[]
+  badges    TaskItemBadge[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, groupId, status])
+  @@index([organizationId, groupId, position])
+  @@index([organizationId, createdById])
+  @@map("task_items")
+}
+
+// ─────────────────────────────────────────────
+// Subtask — recursive checklist, depth 0..2
+// ─────────────────────────────────────────────
+
+model Subtask {
+  id              String  @id @default(cuid())
+  organizationId  String
+  taskItemId      String
+  parentSubtaskId String?
+
+  title    String
+  isDone   Boolean @default(false)
+  position Decimal @db.Decimal(20, 10)
+
+  /// Root = 0; child = parent.depth + 1; maximum = 2.
+  /// Cross-row depth consistency must be enforced by the DB trigger/service.
+  depth Int @default(0) @db.SmallInt
+
+  // Direct children only; grandchildren are excluded.
+  childTotal Int @default(0)
+  childDone  Int @default(0)
+
+  createdById             String
+  checkedById             String?
+  // Snapshot used for the current checked-state label after a profile rename.
+  checkedByNameSnapshot   String?
+  checkedByAvatarSnapshot String?
+  checkedAt               DateTime? @db.Timestamptz(6)
+
+  // Optimistic concurrency token for simultaneous edits to the same node.
+  version Int @default(1)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  taskItem TaskItem @relation(fields: [taskItemId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  // Composite relation guarantees that parent and child belong to one card.
+  parent   Subtask?  @relation("SubtaskTree", fields: [parentSubtaskId, taskItemId], references: [id, taskItemId], onDelete: Cascade)
+  children Subtask[] @relation("SubtaskTree")
+
+  creator   OrganizationUser  @relation("SubtaskCreator", fields: [createdById, organizationId], references: [id, organizationId], onDelete: Restrict)
+  checkedBy OrganizationUser? @relation("SubtaskCheckedBy", fields: [checkedById, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([id, taskItemId])
+  @@index([taskItemId, parentSubtaskId, position])
+  @@index([organizationId, checkedById, isDone])
+  @@map("subtasks")
+}
+
+// ─────────────────────────────────────────────
+// Task assignment — assignment exists at card level only
+// ─────────────────────────────────────────────
+
+model TaskAssignee {
+  taskItemId         String
+  organizationId     String
+  organizationUserId String
+  assignedById       String
+  assignedAt         DateTime @default(now()) @db.Timestamptz(6)
+
+  taskItem   TaskItem         @relation(fields: [taskItemId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  assignee   OrganizationUser @relation("TaskAssigneeUser", fields: [organizationUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  assignedBy OrganizationUser @relation("TaskAssignedBy", fields: [assignedById, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([taskItemId, organizationUserId])
+  @@index([organizationId, organizationUserId])
+  @@map("task_assignees")
+}
+
+// ─────────────────────────────────────────────
+// Badge — organization-scoped labels attached to TaskItem
+// ─────────────────────────────────────────────
+
+model TaskBadge {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  color          String?
+  description    String?
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taskItems    TaskItemBadge[]
+
+  @@unique([organizationId, name])
+  @@unique([id, organizationId])
+  @@index([organizationId, isActive])
+  @@map("task_badges")
+}
+
+model TaskItemBadge {
+  taskItemId     String
+  badgeId        String
+  organizationId String
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  taskItem TaskItem  @relation(fields: [taskItemId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  badge    TaskBadge @relation(fields: [badgeId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([taskItemId, badgeId])
+  @@index([organizationId, badgeId])
+  @@map("task_item_badges")
+}
+
+// ─────────────────────────────────────────────
+// TaskActivity — append-only event history with actor/target snapshots
+// ─────────────────────────────────────────────
+
+model TaskActivity {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Historical identifiers intentionally have no TaskItem/Subtask FK so the
+  // activity survives deletion of its target.
+  taskItemId String
+  subtaskId  String?
+  batchId    String  @default(cuid())
+
+  actorId             String
+  actorUserIdSnapshot String
+  actorNameSnapshot   String
+  actorAvatarSnapshot String?
+  actorRoleSnapshot   OrganizationRole
+
+  action                ActivityAction
+  taskItemTitleSnapshot String
+  targetTitle           String?
+  /// Expected shape: { before?: {...}, after?: {...}, context?: {...} }
+  changes               Json?          @db.JsonB
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor        OrganizationUser @relation("ActivityActor", fields: [actorId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, taskItemId, createdAt(sort: Desc)])
+  @@index([organizationId, actorId, createdAt(sort: Desc)])
+  @@index([batchId])
+  @@map("task_activities")
+}
