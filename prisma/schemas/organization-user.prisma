@@ -19,6 +19,9 @@ model OrganizationUser {
   organizationId String
   userId         String
 
+  firstName     String    @default("")          // ✅ Changed to optional
+  lastName      String    @default("")          // ✅ Changed to optional
+  
   role   OrganizationRole       @default(MEMBER)
   status OrganizationUserStatus @default(ACTIVE)
 
