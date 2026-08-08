@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { motion, HTMLMotionProps } from "motion/react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/client/utils"
 import Image from "next/image"
 
 export interface AvatarProps extends HTMLMotionProps<"div"> {

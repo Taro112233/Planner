@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { authClient, useSession } from "@/lib/auth-client";
+import { authClient, useSession } from "@/lib/client/auth-client";
 
 // ✅ Define Better Auth User interface
 interface BetterAuthUser {

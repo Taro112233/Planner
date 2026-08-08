@@ -8,10 +8,10 @@
 //   🚫 No NextRequest / NextResponse imports
 //   🚫 No HTTP status codes
 
-import { prisma } from '@/lib/prisma';
-import { normalizeRole, getRoleHierarchy, canManageUser } from '@/lib/auth-helpers';
-import { buildSearchWhere, buildEnumWhere, mergeWhere } from '@/lib/query-builder';
-import { buildPaginationMeta } from '@/lib/pagination';
+import { prisma } from '@/lib/server/prisma';
+import { normalizeRole, getRoleHierarchy, canManageUser } from '@/lib/shared/auth-helpers';
+import { buildSearchWhere, buildEnumWhere, mergeWhere } from '@/lib/server/query-builder';
+import { buildPaginationMeta } from '@/lib/server/pagination';
 import type { UserRole } from '@prisma/client';
 import type { PaginationMeta } from '@/types/api';
 

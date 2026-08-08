@@ -12,7 +12,7 @@ import { UserCardList } from './UserCardList';
 import { PaginationBar } from './PaginationBar';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { normalizeRole } from '@/lib/auth-helpers';
+import { normalizeRole } from '@/lib/shared/auth-helpers';
 import type { UserRole } from '@prisma/client';
 
 export function AdminPage() {

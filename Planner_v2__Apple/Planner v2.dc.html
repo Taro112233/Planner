@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#d7d7db;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:#1d1d1f}
+a{color:#007aff}a:hover{color:#0062cc}
+.ap-scroll::-webkit-scrollbar{width:7px;height:7px}
+.ap-scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:4px}
+.ap-scroll::-webkit-scrollbar-track{background:transparent}
+.ap-card{transition:box-shadow .16s ease,transform .16s ease;cursor:grab}
+.ap-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.13);transform:translateY(-1px)}
+.ap-card:active{cursor:grabbing}
+.ap-chk{width:19px;height:19px;border-radius:50%;border:1.6px solid #c7c7cc;flex:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,border-color .15s;background:#fff}
+.ap-chk:hover{border-color:#007aff}
+.ap-chk.on{background:#007aff;border-color:#007aff}
+.ap-chk.on::after{content:"";width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translateY(-1px)}
+.ap-sub{display:flex;align-items:center;gap:9px;padding:4px 0;font-size:13px;line-height:1.3;border-radius:6px}
+.ap-sub:hover{background:rgba(0,0,0,.03)}
+.seg{display:inline-flex;background:#e6e6e9;border-radius:9px;padding:2px}
+.seg-opt{padding:5px 15px;border-radius:7px;font-size:13px;color:#1d1d1f;cursor:pointer;transition:.14s;white-space:nowrap}
+.seg-opt.on{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.14);font-weight:590}
+.nav-row{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;color:#1d1d1f}
+.nav-row:hover{background:rgba(0,0,0,.05)}
+.nav-row.on{background:rgba(0,0,0,.08);font-weight:560}
+.tbtn{width:30px;height:30px;border-radius:8px;border:none;background:transparent;color:#636366;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.tbtn:hover{background:rgba(0,0,0,.06)}
+.addbtn{border:none;background:transparent;color:#86868b;font-size:13px;cursor:pointer;padding:7px 8px;border-radius:8px;text-align:left;width:100%;font-family:inherit}
+.addbtn:hover{background:rgba(0,0,0,.04);color:#1d1d1f}
+.pg{flex:1;overflow-y:auto;padding:18px 22px 26px;background:#f5f5f7}
+.wcard{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.09);padding:14px 16px}
+.h2{font-size:12.5px;font-weight:640;color:#48484a;letter-spacing:.01em}
+.lrow{display:flex;align-items:center;gap:11px;padding:9px 4px;border-top:1px solid rgba(0,0,0,.06);font-size:13.5px;cursor:pointer}
+.lrow:hover{background:rgba(0,0,0,.028)}
+.chip{font-size:11.5px;padding:4px 11px;border-radius:20px;background:rgba(0,0,0,.05);color:#48484a;cursor:pointer;white-space:nowrap;user-select:none}
+.chip:hover{background:rgba(0,0,0,.09)}
+.chip.on{background:#007aff;color:#fff}
+.av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;flex:none}
+.menu{position:absolute;z-index:40;background:rgba(255,255,255,.97);backdrop-filter:blur(22px);border:1px solid rgba(0,0,0,.1);border-radius:11px;box-shadow:0 14px 40px rgba(0,0,0,.22);padding:5px;min-width:180px}
+.mi{display:flex;align-items:center;gap:9px;font-size:13px;padding:7px 9px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.mi:hover{background:rgba(0,0,0,.06)}
+.mi.danger{color:#ff3b30}
+.inp{border:1.5px solid #007aff;border-radius:8px;padding:5px 9px;font-size:13.5px;font-family:inherit;outline:none;width:100%;background:#fff;color:#1d1d1f}
+.sinp{background:rgba(0,0,0,.06);border:none;border-radius:8px;padding:6px 10px 6px 27px;font-size:13px;width:100%;font-family:inherit;outline:none;color:#1d1d1f}
+.sw{width:15px;height:15px;border-radius:50%;cursor:pointer;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.sw:hover{transform:scale(1.15)}
+.tgl{width:34px;height:21px;border-radius:12px;background:#d7d7db;position:relative;cursor:pointer;transition:.18s;flex:none}
+.tgl.on{background:#34c759}
+.tgl::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.18s}
+.tgl.on::after{left:15px}
+.stat{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.08);flex:1}
+.pbtn{border:none;border-radius:8px;background:#007aff;color:#fff;font-weight:590;font-size:13px;padding:7px 12px;cursor:pointer;font-family:inherit}
+.pbtn:hover{background:#0069db}
+.gbtn{border:none;border-radius:8px;background:rgba(0,0,0,.05);color:#1d1d1f;font-size:13px;padding:7px 11px;cursor:pointer;font-family:inherit}
+.gbtn:hover{background:rgba(0,0,0,.09)}
+@keyframes panelIn{from{transform:translateX(14px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:30px 20px">
+<div style="width:1320px;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 30px 70px rgba(0,0,0,.28),0 6px 18px rgba(0,0,0,.14)">
+
+  <div style="height:44px;display:flex;align-items:center;gap:9px;padding:0 16px;background:#f6f6f7;border-bottom:1px solid rgba(0,0,0,.08);position:relative">
+    <div style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></div>
+    <div style="width:12px;height:12px;border-radius:50%;background:#febc2e"></div>
+    <div style="width:12px;height:12px;border-radius:50%;background:#28c840"></div>
+    <div style="position:absolute;left:0;right:0;text-align:center;font-size:13px;font-weight:590;color:#3a3a3c;pointer-events:none">{{ winTitle }}</div>
+  </div>
+
+  <div style="display:flex;height:760px;position:relative">
+
+    <div style="width:240px;flex:none;background:#f2f2f4;border-right:1px solid rgba(0,0,0,.08);padding:14px 12px 12px;display:flex;flex-direction:column;gap:2px">
+      <div style="position:relative;margin:2px 2px 10px">
+        <input class="sinp" placeholder="ค้นหางาน / งานย่อย" value="{{ query }}" onChange="{{ setQuery }}">
+        <span style="position:absolute;left:9px;top:6px;color:#86868b;font-size:13px;pointer-events:none">⌕</span>
+      </div>
+
+      <sc-for list="{{ navMain }}" as="n" hint-placeholder-count="3">
+        <div class="nav-row {{ n.on }}" onClick="{{ n.go }}">
+          <span class="av" style="width:22px;height:22px;border-radius:6px;background:{{ n.bg }};color:#fff;font-size:11.5px">{{ n.icon }}</span>{{ n.label }}
+          <span style="margin-left:auto;font-size:11.5px;color:{{ n.badgeFg }};background:{{ n.badgeBg }};border-radius:20px;padding:1px 7px">{{ n.badge }}</span>
+        </div>
+      </sc-for>
+
+      <div style="font-size:11px;font-weight:600;letter-spacing:.03em;color:#86868b;text-transform:uppercase;margin:14px 8px 5px">กลุ่มของฉัน</div>
+      <sc-for list="{{ navGroups }}" as="n" hint-placeholder-count="3">
+        <div class="nav-row {{ n.on }}" onClick="{{ n.go }}">
+          <span class="av" style="width:22px;height:22px;border-radius:6px;background:{{ n.bg }};color:#fff;font-size:11.5px">◎</span>{{ n.label }}
+          <span style="margin-left:auto;font-size:11.5px;color:#86868b">{{ n.badge }}</span>
+        </div>
+      </sc-for>
+
+      <div style="font-size:11px;font-weight:600;letter-spacing:.03em;color:#86868b;text-transform:uppercase;margin:14px 8px 5px">แผนงาน</div>
+      <sc-for list="{{ navPlans }}" as="n" hint-placeholder-count="2">
+        <div class="nav-row {{ n.on }}" onClick="{{ n.go }}">
+          <span style="width:9px;height:9px;border-radius:3px;background:{{ n.bg }};margin:0 6px;flex:none"></span>{{ n.label }}
+          <span style="margin-left:auto;font-size:11.5px;color:#86868b">{{ n.badge }}</span>
+        </div>
+      </sc-for>
+
+      <div style="font-size:11px;font-weight:600;letter-spacing:.03em;color:#86868b;text-transform:uppercase;margin:14px 8px 5px">การจัดการ</div>
+      <sc-for list="{{ navAdmin }}" as="n" hint-placeholder-count="4">
+        <div class="nav-row {{ n.on }}" onClick="{{ n.go }}">
+          <span class="av" style="width:22px;height:22px;border-radius:6px;background:{{ n.bg }};color:#fff;font-size:11.5px">{{ n.icon }}</span>{{ n.label }}
+          <span style="margin-left:auto;font-size:11.5px;color:#86868b">{{ n.badge }}</span>
+        </div>
+      </sc-for>
+
+      <div style="flex:1"></div>
+
+      <div style="position:relative">
+        <div class="nav-row" style="gap:9px;padding:7px 8px;background:rgba(0,0,0,.04)" onClick="{{ toggleUserMenu }}">
+          <span class="av" style="width:26px;height:26px;background:{{ me.bg }};color:{{ me.fg }};font-size:11px">{{ me.ini }}</span>
+          <span style="min-width:0">
+            <span style="display:block;font-size:12.5px;font-weight:560;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ me.name }}</span>
+            <span style="display:block;font-size:10.5px;color:#86868b">{{ me.roleText }}</span>
+          </span>
+          <span style="margin-left:auto;color:#86868b;font-size:11px">⇅</span>
+        </div>
+        <sc-if value="{{ userMenuOpen }}" hint-placeholder-val="{{ false }}">
+        <div class="menu" style="bottom:44px;left:0;right:0;animation:fadeUp .14s ease">
+          <div style="font-size:10.5px;color:#86868b;padding:5px 9px">สลับผู้ใช้ (สาธิตสิทธิ์ & audit)</div>
+          <sc-for list="{{ userOpts }}" as="u" hint-placeholder-count="5">
+            <div class="mi" onClick="{{ u.pick }}">
+              <span class="av" style="width:22px;height:22px;background:{{ u.bg }};color:{{ u.fg }};font-size:10px">{{ u.ini }}</span>
+              <span style="min-width:0"><span style="display:block">{{ u.name }}</span><span style="display:block;font-size:10.5px;color:#86868b">{{ u.roleText }}</span></span>
+              <span style="margin-left:auto;color:#007aff">{{ u.check }}</span>
+            </div>
+          </sc-for>
+        </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px 12px">
+        <div style="min-width:0">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-.01em">{{ pageTitle }}</div>
+          <div style="font-size:12px;color:#86868b;margin-top:1px">{{ pageSub }}</div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;align-items:center">
+          <sc-for list="{{ teamAvatars }}" as="u" hint-placeholder-count="3">
+            <span class="av" style="width:26px;height:26px;background:{{ u.bg }};color:{{ u.fg }};font-size:11px;border:1.5px solid #fff;margin-left:{{ u.ml }}px" title="{{ u.name }}">{{ u.ini }}</span>
+          </sc-for>
+        </div>
+        <sc-if value="{{ showNewTask }}" hint-placeholder-val="{{ true }}">
+          <button class="pbtn" onClick="{{ newTask }}">＋ งานใหม่</button>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ isProject }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div style="display:flex;align-items:center;gap:12px;padding:0 20px 14px">
+          <div class="seg">
+            <sc-for list="{{ viewOpts }}" as="v" hint-placeholder-count="4">
+              <div class="seg-opt {{ v.on }}" onClick="{{ v.pick }}">{{ v.label }}</div>
+            </sc-for>
+          </div>
+          <div style="flex:1"></div>
+          <div style="position:relative">
+            <button class="gbtn" onClick="{{ toggleFilter }}">⚟ ตัวกรอง {{ filterCount }}</button>
+            <sc-if value="{{ filterOpen }}" hint-placeholder-val="{{ false }}">
+            <div class="menu" style="top:34px;right:0;animation:fadeUp .14s ease;min-width:212px">
+              <div style="font-size:10.5px;color:#86868b;padding:5px 9px">ความสำคัญ</div>
+              <div style="display:flex;gap:6px;padding:2px 9px 8px">
+                <sc-for list="{{ priChips }}" as="p" hint-placeholder-count="3">
+                  <div class="chip {{ p.on }}" onClick="{{ p.pick }}">{{ p.label }}</div>
+                </sc-for>
+              </div>
+              <div class="mi" onClick="{{ toggleMine }}"><span class="ap-chk {{ mineOn }}"></span>เฉพาะงานของฉัน</div>
+              <div class="mi" onClick="{{ clearFilter }}">↺ ล้างตัวกรอง</div>
+            </div>
+            </sc-if>
+          </div>
+          <div style="position:relative">
+            <button class="gbtn" onClick="{{ toggleSort }}">↕ {{ sortLabel }}</button>
+            <sc-if value="{{ sortOpen }}" hint-placeholder-val="{{ false }}">
+            <div class="menu" style="top:34px;right:0;animation:fadeUp .14s ease">
+              <sc-for list="{{ sortOpts }}" as="s" hint-placeholder-count="3">
+                <div class="mi" onClick="{{ s.pick }}"><span style="width:14px;color:#007aff">{{ s.check }}</span>{{ s.label }}</div>
+              </sc-for>
+            </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="flex:1;display:flex;min-height:0;border-top:1px solid rgba(0,0,0,.07)">
+          <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ true }}">
+          <div class="ap-scroll" style="flex:1;display:flex;gap:16px;padding:18px 20px;overflow-x:auto;overflow-y:hidden;align-items:flex-start;background:#f5f5f7">
+            <sc-for list="{{ cols }}" as="col" hint-placeholder-count="4">
+              <div style="width:266px;flex:none;display:flex;flex-direction:column;max-height:100%" onDragOver="{{ col.dragOver }}" onDrop="{{ col.drop }}">
+                <div style="display:flex;align-items:center;gap:8px;padding:2px 4px 10px;position:relative">
+                  <sc-if value="{{ col.renaming }}" hint-placeholder-val="{{ false }}">
+                    <input class="inp" value="{{ col.renameVal }}" onChange="{{ col.setRename }}" onKeyDown="{{ col.renameKey }}" onBlur="{{ col.commitRename }}" autoFocus="{{ true }}">
+                  </sc-if>
+                  <sc-if value="{{ col.showName }}" hint-placeholder-val="{{ true }}">
+                    <span style="width:8px;height:8px;border-radius:50%;background:{{ col.dot }};flex:none"></span>
+                    <span style="font-size:14px;font-weight:640" onDoubleClick="{{ col.startRename }}">{{ col.name }}</span>
+                    <span style="font-size:12px;color:#86868b;background:rgba(0,0,0,.06);border-radius:20px;padding:1px 8px">{{ col.count }}</span>
+                    <span style="flex:1"></span>
+                    <button class="tbtn" style="width:24px;height:24px;font-size:13px" onClick="{{ col.toggleMenu }}">⋯</button>
+                  </sc-if>
+                  <sc-if value="{{ col.menuOn }}" hint-placeholder-val="{{ false }}">
+                  <div class="menu" style="top:28px;right:0;animation:fadeUp .14s ease">
+                    <div class="mi" onClick="{{ col.startRename }}">✎ เปลี่ยนชื่อหัวข้อ</div>
+                    <div style="display:flex;gap:7px;padding:8px 10px">
+                      <sc-for list="{{ col.swatches }}" as="s" hint-placeholder-count="8">
+                        <span class="sw" style="background:{{ s.c }}" onClick="{{ s.pick }}"></span>
+                      </sc-for>
+                    </div>
+                    <div class="mi" onClick="{{ col.addCard }}">＋ เพิ่มการ์ดในหัวข้อนี้</div>
+                    <div style="height:1px;background:rgba(0,0,0,.08);margin:4px 6px"></div>
+                    <div class="mi danger" onClick="{{ col.del }}">🗑 ลบหัวข้อ ({{ col.count }} งาน → ถังขยะ)</div>
+                  </div>
+                  </sc-if>
+                </div>
+                <div class="ap-scroll" style="display:flex;flex-direction:column;gap:11px;overflow-y:auto;padding:2px 3px 4px">
+                  <sc-for list="{{ col.cards }}" as="c" hint-placeholder-count="2">
+                    <div class="ap-card" draggable="true" onDragStart="{{ c.dragStart }}" onClick="{{ c.open }}" style="background:#fff;border-radius:12px;padding:13px;box-shadow:0 1px 3px rgba(0,0,0,.09);display:flex;flex-direction:column;gap:9px">
+                      <div style="display:flex;align-items:center;gap:7px">
+                        <span style="font-size:11px;font-weight:590;padding:2px 9px;border-radius:20px;background:{{ c.tagBg }};color:{{ c.tagFg }}">{{ c.tag }}</span>
+                        <span style="display:flex;align-items:center;gap:4px;margin-left:auto;font-size:11px;color:{{ c.priFg }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ c.priFg }}"></span>{{ c.pri }}</span>
+                      </div>
+                      <div style="font-size:14.5px;font-weight:600;line-height:1.32;letter-spacing:-.005em">{{ c.title }}</div>
+                      <sc-if value="{{ c.hasSubs }}" hint-placeholder-val="{{ true }}">
+                      <div class="ap-scroll" style="max-height:132px;overflow-y:auto;margin:1px -3px 0;padding:2px 3px" onClick="{{ c.stop }}">
+                        <sc-for list="{{ c.subs }}" as="s" hint-placeholder-count="3">
+                          <div class="ap-sub" style="padding-left:{{ s.pad }}px" onClick="{{ s.toggle }}">
+                            <span class="ap-chk {{ s.on }}"></span>
+                            <span style="flex:1;{{ s.txt }}">{{ s.label }}</span>
+                            <span class="av" style="width:16px;height:16px;font-size:8.5px;background:{{ s.byBg }};color:{{ s.byFg }}" title="{{ s.byTitle }}">{{ s.byIni }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      </sc-if>
+                      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+                        <div style="flex:1;height:4px;border-radius:3px;background:rgba(0,0,0,.08);overflow:hidden"><div style="height:100%;width:{{ c.pct }}%;background:#007aff;border-radius:3px"></div></div>
+                        <span style="font-size:11px;color:#86868b;white-space:nowrap">{{ c.progText }}</span>
+                        <span style="font-size:11px;color:{{ c.dueFg }};white-space:nowrap">{{ c.due }}</span>
+                        <span class="av" style="width:22px;height:22px;background:{{ c.whoBg }};color:{{ c.whoFg }};font-size:10.5px">{{ c.who }}</span>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ col.adding }}" hint-placeholder-val="{{ false }}">
+                    <input class="inp" placeholder="ชื่องานใหม่ แล้วกด Enter" value="{{ col.newCard }}" onChange="{{ col.setNewCard }}" onKeyDown="{{ col.newCardKey }}" autoFocus="{{ true }}">
+                  </sc-if>
+                  <button class="addbtn" style="text-align:center;color:#86868b" onClick="{{ col.addCard }}">＋ เพิ่มการ์ด</button>
+                </div>
+              </div>
+            </sc-for>
+
+            <div style="width:266px;flex:none">
+              <sc-if value="{{ addingCol }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#fff;border-radius:12px;padding:11px;box-shadow:0 1px 3px rgba(0,0,0,.09);display:flex;flex-direction:column;gap:9px">
+                <input class="inp" placeholder="ชื่อหัวข้อใหม่" value="{{ newColVal }}" onChange="{{ setNewCol }}" onKeyDown="{{ newColKey }}" autoFocus="{{ true }}">
+                <div style="display:flex;gap:7px">
+                  <button class="pbtn" style="flex:1" onClick="{{ commitNewCol }}">เพิ่มหัวข้อ</button>
+                  <button class="gbtn" onClick="{{ cancelNewCol }}">ยกเลิก</button>
+                </div>
+              </div>
+              </sc-if>
+              <sc-if value="{{ notAddingCol }}" hint-placeholder-val="{{ true }}">
+                <button class="addbtn" style="background:rgba(0,0,0,.045);text-align:center;padding:11px 8px;font-weight:560" onClick="{{ startAddCol }}">＋ เพิ่มหัวข้อใหม่</button>
+              </sc-if>
+              <div style="font-size:11px;color:#a1a1a6;line-height:1.5;padding:9px 4px">ดับเบิลคลิกชื่อหัวข้อเพื่อเปลี่ยนชื่อ · ⋯ เพื่อเปลี่ยนสีหรือลบ · ลากการ์ดข้ามหัวข้อได้</div>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+          <div class="ap-scroll" style="flex:1;overflow-y:auto;padding:8px 22px 20px;background:#fff">
+            <sc-for list="{{ cols }}" as="col" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:8px;padding:14px 2px 6px;position:sticky;top:0;background:#fff;z-index:2">
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ col.dot }}"></span>
+                <span style="font-size:14px;font-weight:640">{{ col.name }}</span>
+                <span style="font-size:12px;color:#86868b">{{ col.count }}</span>
+              </div>
+              <sc-for list="{{ col.cards }}" as="c" hint-placeholder-count="2">
+                <div class="lrow" onClick="{{ c.open }}">
+                  <span class="ap-chk {{ c.allOn }}" onClick="{{ c.toggleAll }}"></span>
+                  <span style="flex:1;font-weight:520;{{ c.rowTxt }}">{{ c.title }}</span>
+                  <span style="font-size:11px;color:#86868b">{{ c.progText }}</span>
+                  <span style="font-size:11px;font-weight:590;padding:2px 9px;border-radius:20px;background:{{ c.tagBg }};color:{{ c.tagFg }}">{{ c.tag }}</span>
+                  <span style="font-size:12px;color:{{ c.dueFg }};width:52px;text-align:right">{{ c.due }}</span>
+                  <span class="av" style="width:22px;height:22px;background:{{ c.whoBg }};color:{{ c.whoFg }};font-size:10.5px">{{ c.who }}</span>
+                </div>
+              </sc-for>
+            </sc-for>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ isCal }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;padding:16px 22px;background:#fff;display:flex;flex-direction:column;min-width:0">
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">
+              <sc-for list="{{ weekNames }}" as="w" hint-placeholder-count="7">
+                <div style="font-size:11px;color:#86868b;text-align:center">{{ w.label }}</div>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;flex:1">
+              <sc-for list="{{ calDays }}" as="d" hint-placeholder-count="14">
+                <div class="ap-scroll" style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:6px;font-size:11px;color:#86868b;display:flex;flex-direction:column;gap:4px;overflow-y:auto;background:{{ d.bg }}">
+                  <span style="font-weight:{{ d.weight }};color:{{ d.fg }}">{{ d.label }}</span>
+                  <sc-for list="{{ d.items }}" as="i" hint-placeholder-count="0">
+                    <span style="font-size:10px;background:{{ i.bg }};color:#fff;border-radius:5px;padding:2px 6px;cursor:pointer;line-height:1.3" onClick="{{ i.open }}">{{ i.title }}</span>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size:12px;color:#86868b;margin-top:12px">สีของป้าย = หัวข้อที่งานอยู่ · คลิกเพื่อเปิดรายละเอียด</div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ isTimeline }}" hint-placeholder-val="{{ false }}">
+          <div class="ap-scroll" style="flex:1;overflow-y:auto;padding:16px 22px 20px;background:#fff;min-width:0">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+              <div style="width:210px;flex:none;font-size:11px;color:#86868b">งาน</div>
+              <div style="flex:1;display:grid;grid-template-columns:repeat(14,1fr)">
+                <sc-for list="{{ tlDays }}" as="d" hint-placeholder-count="14">
+                  <div style="font-size:10px;color:{{ d.fg }};text-align:center">{{ d.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <sc-for list="{{ tlRows }}" as="r" hint-placeholder-count="6">
+              <div style="display:flex;gap:10px;align-items:center;padding:5px 0;border-top:1px solid rgba(0,0,0,.055)">
+                <div style="width:210px;flex:none;display:flex;align-items:center;gap:7px;min-width:0">
+                  <span style="width:7px;height:7px;border-radius:50%;background:{{ r.dot }};flex:none"></span>
+                  <span style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onClick="{{ r.open }}">{{ r.title }}</span>
+                </div>
+                <div style="flex:1;height:22px;position:relative;background:repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 1px,transparent 1px calc(100%/14))">
+                  <div style="position:absolute;top:3px;height:16px;left:{{ r.left }}%;width:{{ r.width }}%;background:{{ r.dot }};border-radius:8px;display:flex;align-items:center;padding:0 7px;color:#fff;font-size:10px;opacity:.92;cursor:pointer" onClick="{{ r.open }}">{{ r.progText }}</div>
+                </div>
+              </div>
+            </sc-for>
+            <div style="font-size:12px;color:#86868b;margin-top:14px">แถบสิ้นสุดที่วันกำหนดส่ง · ตัวเลขบนแถบคืองานย่อยที่เสร็จ</div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ panelOpen }}" hint-placeholder-val="{{ false }}">
+          <div class="ap-scroll" style="width:376px;flex:none;border-left:1px solid rgba(0,0,0,.09);background:#fff;overflow-y:auto;animation:panelIn .2s ease">
+            <div style="padding:16px 18px;display:flex;flex-direction:column;gap:13px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:11px;color:#86868b">{{ sel.id }} · {{ sel.projName }}</span>
+                <div style="flex:1"></div>
+                <button class="tbtn" style="width:26px;height:26px;background:rgba(0,0,0,.05)" onClick="{{ closePanel }}">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="font-size:11px;font-weight:590;padding:2px 9px;border-radius:20px;background:{{ sel.tagBg }};color:{{ sel.tagFg }}">{{ sel.tag }}</span>
+                <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:{{ sel.priFg }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ sel.priFg }}"></span>{{ sel.pri }}</span>
+              </div>
+              <div style="font-size:19px;font-weight:700;line-height:1.3;letter-spacing:-.01em">{{ sel.title }}</div>
+
+              <div style="background:#f5f5f7;border-radius:11px;padding:10px 12px;display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:12px;color:#86868b;width:70px">สถานะ</span>
+                  <div style="display:flex;gap:5px;flex-wrap:wrap">
+                    <sc-for list="{{ sel.statusOpts }}" as="s" hint-placeholder-count="4">
+                      <span class="chip {{ s.on }}" onClick="{{ s.pick }}">{{ s.label }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:12px;color:#86868b;width:70px">ผู้รับผิดชอบ</span>
+                  <div style="display:flex;gap:5px">
+                    <sc-for list="{{ sel.assignOpts }}" as="a" hint-placeholder-count="4">
+                      <span class="av" style="width:24px;height:24px;background:{{ a.bg }};color:{{ a.fg }};font-size:10px;cursor:pointer;box-shadow:{{ a.ring }}" title="{{ a.name }}" onClick="{{ a.pick }}">{{ a.ini }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:12px;color:#86868b;width:70px">กำหนดส่ง</span>
+                  <span style="font-size:13px;font-weight:520;color:{{ sel.dueFg }}">{{ sel.due }}</span>
+                </div>
+              </div>
+
+              <div style="border:1.4px dashed rgba(0,0,0,.16);border-radius:10px;height:74px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#a1a1a6">รูปภาพ / ไฟล์แนบ</div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span class="h2">งานย่อย (ซ้อนได้ไม่จำกัด)</span>
+                <span style="font-size:12px;color:#007aff">{{ sel.progText }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <sc-for list="{{ sel.subs }}" as="s" hint-placeholder-count="4">
+                  <div class="ap-sub" style="padding-left:{{ s.pad }}px" onClick="{{ s.toggle }}">
+                    <span class="ap-chk {{ s.on }}"></span>
+                    <span style="flex:1;font-size:13.5px;{{ s.txt }}">{{ s.label }}</span>
+                    <span style="font-size:10.5px;color:#a1a1a6;white-space:nowrap">{{ s.byText }}</span>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ sel.addingSub }}" hint-placeholder-val="{{ false }}">
+                  <input class="inp" placeholder="ชื่องานย่อย แล้วกด Enter" value="{{ sel.newSub }}" onChange="{{ sel.setNewSub }}" onKeyDown="{{ sel.newSubKey }}" autoFocus="{{ true }}">
+                </sc-if>
+                <div class="ap-sub" style="color:#a1a1a6;cursor:pointer" onClick="{{ sel.addSub }}"><span class="ap-chk" style="border-style:dashed"></span><span style="font-size:13.5px">เพิ่มงานย่อย</span></div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:8px;background:#f0f7ff;border-radius:10px;padding:9px 11px">
+                <span class="av" style="width:24px;height:24px;background:{{ sel.lastBg }};color:{{ sel.lastFg }};font-size:10px">{{ sel.lastIni }}</span>
+                <span style="font-size:12px;color:#3a3a3c;line-height:1.4">{{ sel.lastText }}</span>
+              </div>
+
+              <span class="h2">กิจกรรมของงานนี้ (audit)</span>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <sc-for list="{{ sel.activity }}" as="a" hint-placeholder-count="3">
+                  <div style="display:flex;gap:9px;align-items:flex-start;font-size:12px;color:#636366">
+                    <span class="av" style="width:22px;height:22px;background:{{ a.bg }};color:{{ a.fg }};font-size:10px;margin-top:1px">{{ a.ini }}</span>
+                    <span style="line-height:1.45"><span style="color:#1d1d1f;font-weight:560">{{ a.name }}</span> {{ a.text }}<span style="display:block;color:#a1a1a6;font-size:11px">{{ a.time }} · {{ a.verbLabel }}</span></span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+      <div class="ap-scroll pg">
+        <div style="display:flex;gap:12px;margin-bottom:14px">
+          <sc-for list="{{ homeStats }}" as="s" hint-placeholder-count="4">
+            <div class="stat">
+              <div style="font-size:11.5px;color:#86868b">{{ s.label }}</div>
+              <div style="font-size:26px;font-weight:700;letter-spacing:-.02em;color:{{ s.fg }};line-height:1.25">{{ s.value }}</div>
+              <div style="font-size:11px;color:#a1a1a6">{{ s.hint }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:14px;align-items:start">
+          <div class="wcard">
+            <div style="display:flex;align-items:center;margin-bottom:2px"><span class="h2">ครบกำหนดเร็ว ๆ นี้</span><span style="flex:1"></span><span style="font-size:11.5px;color:#86868b">ทุกแผนงาน</span></div>
+            <sc-for list="{{ upcoming }}" as="c" hint-placeholder-count="6">
+              <div class="lrow" onClick="{{ c.open }}">
+                <span class="ap-chk {{ c.allOn }}" onClick="{{ c.toggleAll }}"></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font-weight:520;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.title }}</span><span style="display:block;font-size:11px;color:#86868b">{{ c.projName }} · {{ c.colName }}</span></span>
+                <span style="font-size:11px;color:#86868b">{{ c.progText }}</span>
+                <span style="font-size:12px;color:{{ c.dueFg }};width:54px;text-align:right">{{ c.due }}</span>
+                <span class="av" style="width:22px;height:22px;background:{{ c.whoBg }};color:{{ c.whoFg }};font-size:10.5px">{{ c.who }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="wcard">
+              <span class="h2">ความคืบหน้าแผนงาน</span>
+              <div style="display:flex;flex-direction:column;gap:11px;margin-top:11px">
+                <sc-for list="{{ projProgress }}" as="p" hint-placeholder-count="4">
+                  <div style="cursor:pointer" onClick="{{ p.open }}">
+                    <div style="display:flex;font-size:12.5px;margin-bottom:5px"><span style="flex:1">{{ p.name }}</span><span style="color:#86868b">{{ p.text }}</span></div>
+                    <div style="height:6px;border-radius:4px;background:rgba(0,0,0,.07);overflow:hidden"><div style="height:100%;width:{{ p.pct }}%;background:{{ p.color }};border-radius:4px"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div class="wcard">
+              <div style="display:flex;align-items:center"><span class="h2">กิจกรรมล่าสุด</span><span style="flex:1"></span><span style="font-size:11.5px;color:#007aff;cursor:pointer" onClick="{{ goAudit }}">ดูทั้งหมด ›</span></div>
+              <div style="display:flex;flex-direction:column;gap:11px;margin-top:11px">
+                <sc-for list="{{ recentAudit }}" as="a" hint-placeholder-count="5">
+                  <div style="display:flex;gap:9px;align-items:flex-start;font-size:12px;color:#636366">
+                    <span class="av" style="width:22px;height:22px;background:{{ a.bg }};color:{{ a.fg }};font-size:10px;margin-top:1px">{{ a.ini }}</span>
+                    <span style="line-height:1.45"><span style="color:#1d1d1f;font-weight:560">{{ a.name }}</span> {{ a.text }}<span style="display:block;color:#a1a1a6;font-size:11px">{{ a.time }}</span></span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isMine }}" hint-placeholder-val="{{ false }}">
+      <div class="ap-scroll pg">
+        <sc-for list="{{ mineGroups }}" as="g" hint-placeholder-count="3">
+          <div class="wcard" style="margin-bottom:14px">
+            <div style="display:flex;align-items:center"><span class="h2">{{ g.label }}</span><span style="flex:1"></span><span style="font-size:11.5px;color:{{ g.fg }}">{{ g.count }} งาน</span></div>
+            <sc-for list="{{ g.cards }}" as="c" hint-placeholder-count="3">
+              <div class="lrow" onClick="{{ c.open }}">
+                <span class="ap-chk {{ c.allOn }}" onClick="{{ c.toggleAll }}"></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font-weight:520">{{ c.title }}</span><span style="display:block;font-size:11px;color:#86868b">{{ c.projName }} · {{ c.colName }} · งานย่อย {{ c.progText }}</span></span>
+                <span style="font-size:11px;font-weight:590;padding:2px 9px;border-radius:20px;background:{{ c.tagBg }};color:{{ c.tagFg }}">{{ c.tag }}</span>
+                <span style="font-size:12px;color:{{ c.dueFg }};width:54px;text-align:right">{{ c.due }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ g.empty }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12.5px;color:#a1a1a6;padding:12px 4px 4px">ไม่มีงานในช่วงนี้</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isInbox }}" hint-placeholder-val="{{ false }}">
+      <div class="ap-scroll pg">
+        <div style="display:flex;gap:7px;margin-bottom:12px">
+          <div class="chip" onClick="{{ markAllRead }}">✓ อ่านทั้งหมด</div>
+          <div style="font-size:12px;color:#86868b;align-self:center">แจ้งเตือนเมื่อมีคนติ๊กงานของคุณ มอบหมายงาน หรือขอให้ตรวจ</div>
+        </div>
+        <div class="wcard" style="padding:6px 16px 12px">
+          <sc-for list="{{ notes }}" as="n" hint-placeholder-count="5">
+            <div class="lrow" style="align-items:flex-start;padding:12px 4px" onClick="{{ n.open }}">
+              <span style="width:7px;height:7px;border-radius:50%;background:{{ n.dot }};margin-top:7px;flex:none"></span>
+              <span class="av" style="width:26px;height:26px;background:{{ n.bg }};color:{{ n.fg }};font-size:10.5px">{{ n.ini }}</span>
+              <span style="flex:1;line-height:1.45"><span style="font-weight:{{ n.weight }}">{{ n.name }}</span> <span style="color:#48484a">{{ n.text }}</span><span style="display:block;font-size:11px;color:#a1a1a6">{{ n.time }} · {{ n.projName }}</span></span>
+              <span style="font-size:11px;color:#86868b;white-space:nowrap">{{ n.kindLabel }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isGroup }}" hint-placeholder-val="{{ false }}">
+      <div class="ap-scroll pg">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:14px">
+          <sc-for list="{{ groupPlans }}" as="p" hint-placeholder-count="2">
+            <div class="wcard" style="cursor:pointer" onClick="{{ p.open }}">
+              <div style="display:flex;align-items:center;gap:9px">
+                <span style="width:10px;height:10px;border-radius:3px;background:{{ p.color }}"></span>
+                <span style="font-size:15px;font-weight:640">{{ p.name }}</span>
+                <span style="flex:1"></span>
+                <span style="font-size:11.5px;color:#86868b">{{ p.text }}</span>
+              </div>
+              <div style="height:6px;border-radius:4px;background:rgba(0,0,0,.07);overflow:hidden;margin:11px 0 10px"><div style="height:100%;width:{{ p.pct }}%;background:{{ p.color }};border-radius:4px"></div></div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap">
+                <sc-for list="{{ p.colChips }}" as="c" hint-placeholder-count="4">
+                  <span style="font-size:11px;padding:2px 9px;border-radius:20px;background:rgba(0,0,0,.05);color:#48484a">{{ c.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:14px;align-items:start">
+          <div class="wcard">
+            <span class="h2">สมาชิกในกลุ่มนี้</span>
+            <sc-for list="{{ groupMembers }}" as="m" hint-placeholder-count="4">
+              <div class="lrow" style="cursor:default">
+                <span class="av" style="width:30px;height:30px;background:{{ m.bg }};color:{{ m.fg }};font-size:11.5px">{{ m.ini }}</span>
+                <span style="flex:1"><span style="display:block;font-weight:520">{{ m.name }}</span><span style="display:block;font-size:11px;color:#86868b">{{ m.roleText }}</span></span>
+                <span style="font-size:11px;color:#86868b">{{ m.openText }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div class="wcard">
+            <span class="h2">กิจกรรมในกลุ่ม</span>
+            <div style="display:flex;flex-direction:column;gap:11px;margin-top:11px">
+              <sc-for list="{{ groupAudit }}" as="a" hint-placeholder-count="5">
+                <div style="display:flex;gap:9px;align-items:flex-start;font-size:12px;color:#636366">
+                  <span class="av" style="width:22px;height:22px;background:{{ a.bg }};color:{{ a.fg }};font-size:10px;margin-top:1px">{{ a.ini }}</span>
+                  <span style="line-height:1.45"><span style="color:#1d1d1f;font-weight:560">{{ a.name }}</span> {{ a.text }}<span style="display:block;color:#a1a1a6;font-size:11px">{{ a.time }} · {{ a.projName }}</span></span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isAudit }}" hint-placeholder-val="{{ false }}">
+      <div class="ap-scroll pg">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+          <sc-for list="{{ auditChips }}" as="f" hint-placeholder-count="5">
+            <div class="chip {{ f.on }}" onClick="{{ f.pick }}">{{ f.label }}</div>
+          </sc-for>
+          <div style="width:12px"></div>
+          <sc-for list="{{ auditUsers }}" as="u" hint-placeholder-count="5">
+            <span class="av" style="width:26px;height:26px;background:{{ u.bg }};color:{{ u.fg }};font-size:10.5px;cursor:pointer;box-shadow:{{ u.ring }}" title="{{ u.name }}" onClick="{{ u.pick }}">{{ u.ini }}</span>
+          </sc-for>
+          <div style="flex:1"></div>
+          <button class="gbtn" onClick="{{ exportAudit }}">↓ ส่งออก CSV</button>
+        </div>
+        <div class="wcard" style="padding:0;overflow:hidden">
+          <div style="display:grid;grid-template-columns:118px 190px 128px 1fr 132px;gap:10px;padding:10px 16px;background:#f5f5f7;font-size:11px;color:#86868b;font-weight:600">
+            <span>เวลา</span><span>ผู้ใช้</span><span>การกระทำ</span><span>รายละเอียด</span><span>แผนงาน</span>
+          </div>
+          <sc-for list="{{ auditRows }}" as="a" hint-placeholder-count="10">
+            <div style="display:grid;grid-template-columns:118px 190px 128px 1fr 132px;gap:10px;padding:11px 16px;border-top:1px solid rgba(0,0,0,.055);font-size:12.5px;align-items:center">
+              <span style="color:#86868b;font-size:11.5px">{{ a.time }}</span>
+              <span style="display:flex;align-items:center;gap:8px;min-width:0">
+                <span class="av" style="width:22px;height:22px;background:{{ a.bg }};color:{{ a.fg }};font-size:10px">{{ a.ini }}</span>
+                <span style="min-width:0"><span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.name }}</span><span style="display:block;font-size:10.5px;color:#a1a1a6">{{ a.roleText }}</span></span>
+              </span>
+              <span><span style="font-size:11px;font-weight:590;padding:3px 9px;border-radius:20px;background:{{ a.verbBg }};color:{{ a.verbFg }}">{{ a.verbLabel }}</span></span>
+              <span style="color:#3a3a3c;line-height:1.4">{{ a.text }}</span>
+              <span style="color:#86868b;font-size:11.5px">{{ a.projName }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size:11.5px;color:#a1a1a6;margin-top:10px">บันทึกทุกการติ๊กงานเสร็จ (ใครติ๊ก เวลาใด งานย่อยไหน) การย้ายสถานะ การเพิ่ม/ลบหัวข้อ และการแก้สิทธิ์ · ลบไม่ได้ แก้ไม่ได้</div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isMembers }}" hint-placeholder-val="{{ false }}">
+      <div class="ap-scroll pg">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:16px">
+          <sc-for list="{{ accessGroups }}" as="g" hint-placeholder-count="5">
+            <div class="wcard" style="padding:12px 13px">
+              <div style="display:flex;align-items:center;gap:7px"><span style="width:9px;height:9px;border-radius:50%;background:{{ g.color }}"></span><span style="font-size:13.5px;font-weight:640">{{ g.name }}</span></div>
+              <div style="font-size:11px;color:#86868b;line-height:1.45;margin:6px 0 10px;min-height:32px">{{ g.desc }}</div>
+              <div style="display:flex;align-items:center">
+                <sc-for list="{{ g.members }}" as="m" hint-placeholder-count="2">
+                  <span class="av" style="width:24px;height:24px;background:{{ m.bg }};color:{{ m.fg }};font-size:10px;border:1.5px solid #fff;margin-left:{{ m.ml }}px" title="{{ m.name }}">{{ m.ini }}</span>
+                </sc-for>
+                <span style="flex:1"></span>
+                <span style="font-size:11px;color:#86868b">{{ g.count }} คน</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div class="wcard" style="padding:0;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.06)">
+            <span class="h2">ตารางสิทธิ์การเข้าใช้</span>
+            <span style="font-size:11.5px;color:#86868b">แตะสวิตช์เพื่อแก้ · ทุกการแก้ถูกบันทึกใน audit log</span>
+            <span style="flex:1"></span>
+            <button class="gbtn" onClick="{{ inviteMember }}">＋ เชิญสมาชิก</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1.5fr repeat(5,1fr);gap:8px;padding:10px 16px;background:#f5f5f7;font-size:11px;color:#86868b;font-weight:600">
+            <span>สิทธิ์</span>
+            <sc-for list="{{ accessGroups }}" as="g" hint-placeholder-count="5">
+              <span style="text-align:center">{{ g.name }}</span>
+            </sc-for>
+          </div>
+          <sc-for list="{{ permRows }}" as="p" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:1.5fr repeat(5,1fr);gap:8px;padding:10px 16px;border-top:1px solid rgba(0,0,0,.055);align-items:center">
+              <span style="font-size:13px">{{ p.label }}<span style="display:block;font-size:10.5px;color:#a1a1a6">{{ p.hint }}</span></span>
+              <sc-for list="{{ p.cells }}" as="c" hint-placeholder-count="5">
+                <span style="display:flex;justify-content:center"><span class="tgl {{ c.on }}" onClick="{{ c.toggle }}"></span></span>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size:11.5px;color:#a1a1a6;margin-top:10px">สิทธิ์ของคุณตอนนี้ ({{ me.name }}): {{ myPermText }}</div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isReports }}" hint-placeholder-val="{{ false }}">
+      <div class="ap-scroll pg">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+          <div class="wcard">
+            <span class="h2">ภาระงานต่อคน (งานที่ยังไม่เสร็จ)</span>
+            <div style="display:flex;flex-direction:column;gap:11px;margin-top:12px">
+              <sc-for list="{{ workload }}" as="w" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span class="av" style="width:26px;height:26px;background:{{ w.bg }};color:{{ w.fg }};font-size:10.5px">{{ w.ini }}</span>
+                  <span style="font-size:12.5px;width:96px">{{ w.name }}</span>
+                  <span style="flex:1;height:9px;border-radius:5px;background:rgba(0,0,0,.06);overflow:hidden"><span style="display:block;height:100%;width:{{ w.pct }}%;background:{{ w.fg }};border-radius:5px"></span></span>
+                  <span style="font-size:11.5px;color:#86868b;width:56px;text-align:right">{{ w.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div class="wcard">
+            <span class="h2">งานตามหัวข้อ (ทุกแผนงาน)</span>
+            <div style="display:flex;flex-direction:column;gap:11px;margin-top:12px">
+              <sc-for list="{{ statusDist }}" as="s" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span style="width:8px;height:8px;border-radius:50%;background:{{ s.dot }}"></span>
+                  <span style="font-size:12.5px;width:110px">{{ s.name }}</span>
+                  <span style="flex:1;height:9px;border-radius:5px;background:rgba(0,0,0,.06);overflow:hidden"><span style="display:block;height:100%;width:{{ s.pct }}%;background:{{ s.dot }};border-radius:5px"></span></span>
+                  <span style="font-size:11.5px;color:#86868b;width:34px;text-align:right">{{ s.count }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div class="wcard">
+            <span class="h2">ใครติ๊กงานเสร็จมากที่สุด (จาก audit)</span>
+            <div style="display:flex;flex-direction:column;gap:11px;margin-top:12px">
+              <sc-for list="{{ tickers }}" as="t" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span class="av" style="width:26px;height:26px;background:{{ t.bg }};color:{{ t.fg }};font-size:10.5px">{{ t.ini }}</span>
+                  <span style="font-size:12.5px;flex:1">{{ t.name }}</span>
+                  <span style="font-size:12.5px;font-weight:600">{{ t.count }}</span>
+                  <span style="font-size:11px;color:#86868b">ครั้ง</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div class="wcard">
+            <span class="h2">งานเสร็จต่อวัน (7 วันล่าสุด)</span>
+            <div style="display:flex;align-items:flex-end;gap:12px;height:120px;margin-top:14px">
+              <sc-for list="{{ weekBars }}" as="b" hint-placeholder-count="7">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px">
+                  <span style="font-size:11px;color:#86868b">{{ b.value }}</span>
+                  <span style="width:100%;height:{{ b.h }}px;background:{{ b.color }};border-radius:6px 6px 0 0"></span>
+                  <span style="font-size:11px;color:#86868b">{{ b.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTemplates }}" hint-placeholder-val="{{ false }}">
+      <div class="ap-scroll pg">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">
+          <sc-for list="{{ templates }}" as="t" hint-placeholder-count="4">
+            <div class="wcard">
+              <div style="display:flex;align-items:center;gap:9px">
+                <span style="width:30px;height:30px;border-radius:9px;background:{{ t.color }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px">{{ t.icon }}</span>
+                <span><span style="display:block;font-size:14.5px;font-weight:640">{{ t.name }}</span><span style="display:block;font-size:11.5px;color:#86868b">{{ t.desc }}</span></span>
+              </div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 12px">
+                <sc-for list="{{ t.cols }}" as="c" hint-placeholder-count="4">
+                  <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(0,0,0,.05);color:#48484a">{{ c.label }}</span>
+                </sc-for>
+              </div>
+              <button class="pbtn" onClick="{{ t.use }}">ใช้เทมเพลตนี้</button>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTrash }}" hint-placeholder-val="{{ false }}">
+      <div class="ap-scroll pg">
+        <div class="wcard" style="padding:6px 16px 14px">
+          <sc-for list="{{ trash }}" as="t" hint-placeholder-count="2">
+            <div class="lrow" style="cursor:default">
+              <span style="width:30px;height:30px;border-radius:9px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:center;font-size:13px">🗑</span>
+              <span style="flex:1"><span style="display:block;font-weight:520">{{ t.name }}</span><span style="display:block;font-size:11px;color:#86868b">{{ t.kind }} · {{ t.projName }} · ลบโดย {{ t.byName }} · {{ t.time }}</span></span>
+              <span style="font-size:11.5px;color:#86868b">{{ t.countText }}</span>
+              <button class="gbtn" onClick="{{ t.restore }}">↺ กู้คืน</button>
+            </div>
+          </sc-for>
+          <sc-if value="{{ trashEmpty }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:34px 4px;text-align:center;color:#a1a1a6;font-size:13px">ถังขยะว่าง — หัวข้อหรืองานที่ลบจะมาอยู่ที่นี่ 30 วัน แล้วกู้คืนได้</div>
+          </sc-if>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+
+    <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;inset:0;z-index:30" onClick="{{ closeMenu }}"></div>
+    </sc-if>
+
+    <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);background:rgba(28,28,30,.94);color:#fff;font-size:13px;padding:10px 18px;border-radius:11px;box-shadow:0 10px 30px rgba(0,0,0,.3);animation:toastIn .18s ease;z-index:60;white-space:nowrap">{{ toast }}</div>
+    </sc-if>
+
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1380,&quot;height&quot;:880},&quot;startAs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;kr&quot;,&quot;np&quot;,&quot;pr&quot;,&quot;st&quot;,&quot;gu&quot;],&quot;default&quot;:&quot;kr&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;สาธิต&quot;},&quot;strictPermissions&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;สาธิต&quot;},&quot;defaultView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;board&quot;,&quot;list&quot;,&quot;calendar&quot;,&quot;timeline&quot;],&quot;default&quot;:&quot;board&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;มุมมอง&quot;},&quot;showTimeline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;มุมมอง&quot;}}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    const S=(id,label,depth,done,by,at)=>({id:id,label:label,depth:depth||0,done:!!done,by:done?(by||'pr'):null,at:done?(at||'24 ก.ค. 10:20'):null});
+    const C=(id,title,tag,pri,who,due,subs)=>({id:id,title:title,tag:tag,pri:pri,who:who,due:due,subs:subs||[]});
+    this.pal=['#8e8e93','#007aff','#ff9500','#34c759','#af52de','#ff2d55','#00b0c8','#ffcc00'];
+    this.users={
+      kr:{id:'kr',ini:'กร',name:'กร วรากร',bg:'#e7effc',fg:'#007aff',roleText:'ผู้ดูแลระบบ'},
+      np:{id:'np',ini:'นภ',name:'นภัส ธีรกุล',bg:'#f3e9fb',fg:'#af52de',roleText:'หัวหน้าโครงการ'},
+      pr:{id:'pr',ini:'พร',name:'พรทิพย์ สุขใส',bg:'#e6f6ea',fg:'#34c759',roleText:'สมาชิกทีม (ดีไซน์)'},
+      st:{id:'st',ini:'สุ',name:'สุธี มั่นคง',bg:'#fdecec',fg:'#ff3b30',roleText:'ผู้ตรวจสอบ (QA)'},
+      gu:{id:'gu',ini:'ขก',name:'แขก ภายนอก',bg:'#eeeef0',fg:'#636366',roleText:'ผู้ชมเท่านั้น'}
+    };
+    this.userOrder=['kr','np','pr','st','gu'];
+    this.tagStyle={'วางแผน':['#e7effc','#007aff'],'วิจัย':['#eeeef0','#636366'],'ดีไซน์':['#f3e9fb','#af52de'],'ทั่วไป':['#e6f6ea','#34c759'],'พัฒนา':['#e7f6f8','#00849a'],'ขาย':['#ffeef2','#ff2d55']};
+    this.priStyle={'สูง':'#ff3b30','กลาง':'#ff9500','ต่ำ':'#8e8e93'};
+    this.verbInfo={
+      tick:['ติ๊กเสร็จ','#e6f6ea','#2a9c4a'],untick:['ยกเลิกติ๊ก','#fff2e0','#c96a00'],
+      move:['ย้ายสถานะ','#e7effc','#0069db'],addcol:['เพิ่มหัวข้อ','#f3e9fb','#8c3fc0'],
+      delcol:['ลบหัวข้อ','#fdecec','#d92d20'],rencol:['แก้หัวข้อ','#f3e9fb','#8c3fc0'],
+      perm:['แก้สิทธิ์','#eceafd','#4b45c6'],assign:['มอบหมาย','#e7f6f8','#00849a'],
+      create:['สร้างงาน','#eeeef0','#48484a'],restore:['กู้คืน','#e6f6ea','#2a9c4a'],addsub:['เพิ่มงานย่อย','#eeeef0','#48484a']
+    };
+    this.permList=[
+      {k:'create',label:'สร้าง / แก้ไขงาน',hint:'เพิ่มการ์ด งานย่อย แก้ชื่อ'},
+      {k:'tick',label:'ติ๊กงานเสร็จ',hint:'ทุกครั้งจะบันทึกชื่อผู้ติ๊ก'},
+      {k:'approve',label:'อนุมัติงานที่รอตรวจ',hint:'ย้ายออกจากหัวข้อรอตรวจ'},
+      {k:'cols',label:'เพิ่ม / ลบหัวข้อ',hint:'โครงสร้างคอลัมน์ของบอร์ด'},
+      {k:'members',label:'จัดการสมาชิก & สิทธิ์',hint:'เชิญคน แก้ตารางสิทธิ์'},
+      {k:'report',label:'ดูรายงาน',hint:'ภาระงาน ความคืบหน้า'},
+      {k:'audit',label:'ดู / ส่งออก audit log',hint:'ประวัติทั้งหมด'},
+      {k:'delete',label:'ลบงาน / แผนงาน',hint:'ย้ายเข้าถังขยะ'}
+    ];
+    const T=1,F=0;
+    this.state={
+      me:props.startAs||'kr', nav:{type:'project',id:'p1'}, view:props.defaultView||'board',
+      panelOpen:false, activeId:'T-102', drag:null, query:'',
+      menu:null, addingCol:false, newColVal:'', renameId:null, renameVal:'',
+      addCardCol:null, newCardVal:'', addingSub:false, newSubVal:'',
+      filterPri:[], filterMine:false, sort:'due',
+      auditVerb:'all', auditUser:'all', toast:'', seq:200,
+      wsGroups:[
+        {id:'mkt',name:'การตลาด Q3',color:'#34c759',members:['kr','np','pr']},
+        {id:'dev',name:'พัฒนาสินค้า',color:'#af52de',members:['kr','pr','st']},
+        {id:'sales',name:'ฝ่ายขาย',color:'#ff2d55',members:['np','st','gu']}
+      ],
+      accessGroups:[
+        {id:'admin',name:'ผู้ดูแลระบบ',color:'#007aff',desc:'ตั้งค่าทุกอย่าง จัดการสิทธิ์และแผนงาน',members:['kr']},
+        {id:'lead',name:'หัวหน้าโครงการ',color:'#af52de',desc:'จัดโครงสร้างบอร์ด มอบหมายงาน อนุมัติ',members:['np']},
+        {id:'member',name:'สมาชิกทีม',color:'#34c759',desc:'ทำงานที่ได้รับมอบหมาย ติ๊กงานเสร็จ',members:['pr','np']},
+        {id:'reviewer',name:'ผู้ตรวจสอบ',color:'#ff3b30',desc:'ตรวจงานในหัวข้อรอตรวจ อนุมัติหรือตีกลับ',members:['st']},
+        {id:'guest',name:'ผู้ชม (แขก)',color:'#8e8e93',desc:'ดูบอร์ดได้อย่างเดียว แก้ไขไม่ได้',members:['gu']}
+      ],
+      perms:{
+        admin:{create:T,tick:T,approve:T,cols:T,members:T,report:T,audit:T,delete:T},
+        lead:{create:T,tick:T,approve:T,cols:T,members:F,report:T,audit:T,delete:T},
+        member:{create:T,tick:T,approve:F,cols:F,members:F,report:T,audit:F,delete:F},
+        reviewer:{create:F,tick:T,approve:T,cols:F,members:F,report:T,audit:T,delete:F},
+        guest:{create:F,tick:F,approve:F,cols:F,members:F,report:F,audit:F,delete:F}
+      },
+      projects:[
+        {id:'p1',name:'เปิดตัวแคมเปญ Q3',group:'mkt',color:'#34c759',columns:[
+          {id:'todo',name:'ต้องทำ',dot:'#8e8e93',cards:[
+            C('T-110','เตรียมสื่อแคมเปญครบชุด','ดีไซน์','สูง','pr','2 ส.ค.',[
+              S('g1','งานโซเชียล',0),S('g1a','Facebook',1),S('g1b','Instagram',1),S('g1c','TikTok',1),S('g1d','LINE OA',1),
+              S('g2','งานวิดีโอ',0),S('g2a','เขียนสคริปต์',1),S('g2b','สตอรีบอร์ด',1),S('g2c','ถ่ายทำ',1),S('g2d','ตัดต่อ',1),
+              S('g3','งานสิ่งพิมพ์',0),S('g3a','โปสเตอร์',1),S('g3b','ใบปลิว',1),S('g3c','ป้ายหน้าร้าน',1),
+              S('g4','อีเมล & แลนดิ้ง',0),S('g4a','เขียน copy',1),S('g4b','ทำหน้า landing',1),S('g4c','ตั้ง tracking',1),
+              S('g5','ตรวจแบรนด์ไกด์',0)]),
+            C('T-111','จองพื้นที่โฆษณา','วางแผน','กลาง','np','5 ส.ค.',[S('h1','เลือกช่องทาง',0),S('h2','ต่อรองราคา',0),S('h3','ยืนยันสัญญา',0)]),
+            C('T-101','ตั้งค่าโครงสร้างกลุ่มงาน','วางแผน','สูง','kr','25 ก.ค.',[S('a1','กำหนดหัวข้อใหญ่',0),S('a1a','การตลาด',1),S('a1b','คอนเทนต์',1),S('a2','ตั้งสิทธิ์เริ่มต้น',0)]),
+            C('T-105','เก็บ requirement จากฝ่ายขาย','วิจัย','กลาง','np','28 ก.ค.',[S('b1','สัมภาษณ์ผู้ใช้ 5 คน',0),S('b2','สรุปประเด็น',0)])]},
+          {id:'doing',name:'กำลังทำ',dot:'#007aff',cards:[
+            C('T-102','ออกแบบ wireframe หน้าหลัก','ดีไซน์','สูง','pr','26 ก.ค.',[
+              S('c1','ร่างหน้าบอร์ด',0,true,'pr','24 ก.ค. 09:40'),S('c1a','คอลัมน์สถานะ',1,true,'pr','24 ก.ค. 09:38'),S('c1b','การ์ดงาน',1,true,'pr','24 ก.ค. 09:39'),S('c1c','แถบเครื่องมือ',1),
+              S('c2','ทำ prototype',0),S('c2a','เชื่อมหน้าจอ',1),S('c2b','ใส่ transition',1),
+              S('c3','ทำ panel รายละเอียด',0),S('c3a','ฟิลด์สถานะ',1),S('c3b','checklist',1),
+              S('c4','รีวิวกับทีม',0),S('c5','แก้ตามฟีดแบ็ก',0),S('c6','ส่งมอบ handoff',0)]),
+            C('T-108','ร่างระบบสิทธิ์ผู้ใช้','วางแผน','กลาง','kr','30 ก.ค.',[S('d1','กำหนด role',0),S('d2','ทำ flow อนุมัติ',0)]),
+            C('T-112','พัฒนาระบบแจ้งเตือน','พัฒนา','กลาง','pr','1 ส.ค.',[S('i1','ออกแบบ toast',0,true,'pr','23 ก.ค. 16:10'),S('i2','เชื่อม backend',0),S('i3','ทดสอบ',0)]),
+            C('T-117','ทำ dashboard สรุป','ดีไซน์','ต่ำ','np','4 ส.ค.',[S('j1','เลือก metric',0,true,'np','22 ก.ค. 11:05'),S('j2','วางเลย์เอาต์',0),S('j3','ต่อข้อมูลจริง',0)])]},
+          {id:'review',name:'รอตรวจ',dot:'#ff9500',cards:[
+            C('T-103','สรุป user flow','วิจัย','ต่ำ','np','24 ก.ค.',[S('e1','เขียน user story',0,true,'np','21 ก.ค. 15:20'),S('e2','ตรวจทาน',0,true,'st','22 ก.ค. 09:15')]),
+            C('T-113','รีวิวข้อความแคมเปญ','ทั่วไป','กลาง','kr','23 ก.ค.',[S('k1','ตรวจโทนภาษา',0,true,'kr','22 ก.ค. 17:02'),S('k2','เช็คคำผิด',0)]),
+            C('T-114','ตรวจสิทธิ์เข้าถึงกลุ่ม','วางแผน','สูง','st','24 ก.ค.',[S('l1','ตรวจ role แอดมิน',0),S('l2','ตรวจสมาชิกใหม่',0)])]},
+          {id:'done',name:'เสร็จ',dot:'#34c759',cards:[
+            C('T-104','คิกออฟมีตติ้ง','ทั่วไป','กลาง','kr','19 ก.ค.',[S('f1','นัดหมายทีม',0,true,'kr','19 ก.ค. 08:30')]),
+            C('T-115','ตั้งชื่อโปรเจกต์','ทั่วไป','ต่ำ','pr','18 ก.ค.',[S('m1','โหวตชื่อ',0,true,'pr','18 ก.ค. 13:40'),S('m2','สรุปชื่อ',0,true,'kr','18 ก.ค. 14:05')]),
+            C('T-116','ตั้งค่า workspace','วางแผน','ต่ำ','kr','17 ก.ค.',[S('n1','สร้างกลุ่ม',0,true,'kr','17 ก.ค. 10:00'),S('n2','เชิญสมาชิก',0,true,'kr','17 ก.ค. 10:12')])]}
+        ]},
+        {id:'p2',name:'อีเวนต์กลางปี',group:'mkt',color:'#ff9500',columns:[
+          {id:'todo',name:'ต้องทำ',dot:'#8e8e93',cards:[
+            C('E-201','หาสถานที่จัดงาน','วางแผน','สูง','np','29 ก.ค.',[S('q1','ดูสถานที่ 3 แห่ง',0),S('q2','เทียบราคา',0)]),
+            C('E-202','ทำบัตรเชิญ','ดีไซน์','กลาง','pr','31 ก.ค.',[S('q3','ออกแบบบัตร',0),S('q4','ส่งพิสูจน์อักษร',0)])]},
+          {id:'doing',name:'กำลังทำ',dot:'#007aff',cards:[
+            C('E-203','ทำรายชื่อผู้เข้าร่วม','ทั่วไป','กลาง','np','27 ก.ค.',[S('q5','ขอรายชื่อจากฝ่ายขาย',0,true,'np','24 ก.ค. 11:30'),S('q6','ยืนยันจำนวน',0)])]},
+          {id:'done',name:'เสร็จ',dot:'#34c759',cards:[
+            C('E-204','ตั้งงบประมาณอีเวนต์','วางแผน','ต่ำ','kr','20 ก.ค.',[S('q7','อนุมัติงบ',0,true,'kr','20 ก.ค. 09:00')])]}
+        ]},
+        {id:'p3',name:'สปรินต์ 12 — แอปมือถือ',group:'dev',color:'#af52de',columns:[
+          {id:'todo',name:'แบ็กล็อก',dot:'#8e8e93',cards:[
+            C('D-301','ทำหน้าโปรไฟล์ใหม่','พัฒนา','กลาง','pr','3 ส.ค.',[S('r1','ต่อ API',0),S('r2','ทำ state ว่าง',0)])]},
+          {id:'doing',name:'กำลังพัฒนา',dot:'#007aff',cards:[
+            C('D-302','แก้บั๊กล็อกอินค้าง','พัฒนา','สูง','pr','26 ก.ค.',[S('r3','หาสาเหตุ',0,true,'pr','25 ก.ค. 14:22'),S('r4','แก้และเขียนเทสต์',0)])]},
+          {id:'qa',name:'รอ QA',dot:'#ff9500',cards:[
+            C('D-303','ทดสอบระบบชำระเงิน','พัฒนา','สูง','st','27 ก.ค.',[S('r5','เคสจ่ายสำเร็จ',0,true,'st','25 ก.ค. 16:40'),S('r6','เคสจ่ายไม่ผ่าน',0)])]},
+          {id:'done',name:'ปล่อยแล้ว',dot:'#34c759',cards:[
+            C('D-304','อัปเดตไลบรารี','พัฒนา','ต่ำ','pr','21 ก.ค.',[S('r7','ทดสอบ regression',0,true,'st','21 ก.ค. 15:00')])]}
+        ]},
+        {id:'p4',name:'ไปป์ไลน์ฝ่ายขาย',group:'sales',color:'#ff2d55',columns:[
+          {id:'lead',name:'ลูกค้าใหม่',dot:'#8e8e93',cards:[
+            C('S-401','ติดตามลูกค้าจากงานสัมมนา','ขาย','กลาง','np','28 ก.ค.',[S('s1','โทรตาม 12 ราย',0),S('s2','ส่งใบเสนอราคา',0)])]},
+          {id:'quote',name:'เสนอราคา',dot:'#007aff',cards:[
+            C('S-402','ปิดดีลบริษัท ก.','ขาย','สูง','np','30 ก.ค.',[S('s3','ปรับข้อเสนอ',0,true,'np','24 ก.ค. 13:15'),S('s4','นัดเซ็นสัญญา',0)])]},
+          {id:'won',name:'ปิดได้',dot:'#34c759',cards:[
+            C('S-403','ดีลร้าน ข.','ขาย','กลาง','np','19 ก.ค.',[S('s5','ส่งมอบงาน',0,true,'np','19 ก.ค. 17:30')])]}
+        ]}
+      ],
+      audit:[
+        {id:'a9',u:'pr',verb:'tick',text:'ติ๊ก “คอลัมน์สถานะ” ใน T-102 ว่าเสร็จ',proj:'p1',task:'T-102',time:'วันนี้ 09:38'},
+        {id:'a8',u:'st',verb:'tick',text:'ติ๊ก “เคสจ่ายสำเร็จ” ใน D-303 ว่าเสร็จ',proj:'p3',task:'D-303',time:'วันนี้ 08:12'},
+        {id:'a7',u:'np',verb:'move',text:'ย้าย S-402 ไปหัวข้อ “เสนอราคา”',proj:'p4',task:'S-402',time:'เมื่อวาน 17:44'},
+        {id:'a6',u:'kr',verb:'perm',text:'ปิดสิทธิ์ “ลบงาน/แผนงาน” ของกลุ่มผู้ตรวจสอบ',proj:'-',task:'',time:'เมื่อวาน 16:20'},
+        {id:'a5',u:'kr',verb:'addcol',text:'เพิ่มหัวข้อ “รอตรวจ” ในแผนงานเปิดตัวแคมเปญ Q3',proj:'p1',task:'',time:'เมื่อวาน 11:05'},
+        {id:'a4',u:'st',verb:'tick',text:'ติ๊ก “ตรวจทาน” ใน T-103 ว่าเสร็จ',proj:'p1',task:'T-103',time:'22 ก.ค. 09:15'},
+        {id:'a3',u:'kr',verb:'assign',text:'มอบหมาย T-114 ให้ สุธี มั่นคง',proj:'p1',task:'T-114',time:'22 ก.ค. 08:50'},
+        {id:'a2',u:'np',verb:'tick',text:'ติ๊ก “เขียน user story” ใน T-103 ว่าเสร็จ',proj:'p1',task:'T-103',time:'21 ก.ค. 15:20'},
+        {id:'a1',u:'kr',verb:'create',text:'สร้างแผนงาน “เปิดตัวแคมเปญ Q3”',proj:'p1',task:'',time:'17 ก.ค. 09:55'}
+      ],
+      trash:[],
+      notes:[
+        {id:'n1',u:'pr',text:'ติ๊กงานย่อย “คอลัมน์สถานะ” ของคุณว่าเสร็จ',time:'วันนี้ 09:38',proj:'p1',task:'T-102',kind:'ติ๊กเสร็จ',read:false},
+        {id:'n2',u:'st',text:'ขอให้คุณตรวจ T-114 ก่อนบ่ายนี้',time:'วันนี้ 08:40',proj:'p1',task:'T-114',kind:'ขอตรวจ',read:false},
+        {id:'n3',u:'np',text:'มอบหมาย E-203 ให้คุณช่วยดูรายชื่อ',time:'เมื่อวาน 17:10',proj:'p2',task:'E-203',kind:'มอบหมาย',read:false},
+        {id:'n4',u:'kr',text:'แก้สิทธิ์กลุ่ม “สมาชิกทีม” — ตอนนี้ติ๊กงานได้',time:'เมื่อวาน 16:20',proj:'-',task:'',kind:'สิทธิ์',read:true},
+        {id:'n5',u:'pr',text:'คอมเมนต์ใน T-110: รอไฟล์โลโก้เวอร์ชันใหม่',time:'23 ก.ค. 14:02',proj:'p1',task:'T-110',kind:'คอมเมนต์',read:true}
+      ]
+    };
+    this.templates=[
+      {id:'t1',name:'แคมเปญการตลาด',icon:'◎',color:'#34c759',desc:'วางแผน ผลิตสื่อ ตรวจ และเผยแพร่',cols:['ต้องทำ','กำลังทำ','รอตรวจ','เผยแพร่แล้ว']},
+      {id:'t2',name:'สปรินต์พัฒนา (Scrum)',icon:'⌗',color:'#af52de',desc:'แบ็กล็อก → พัฒนา → QA → ปล่อย',cols:['แบ็กล็อก','กำลังพัฒนา','รอ QA','ปล่อยแล้ว']},
+      {id:'t3',name:'ตรวจรับงาน / QA',icon:'✓',color:'#ff9500',desc:'มีขั้นอนุมัติ 2 ชั้นและบันทึกผู้ตรวจ',cols:['ส่งตรวจ','กำลังตรวจ','แก้ไข','อนุมัติแล้ว']},
+      {id:'t4',name:'ไปป์ไลน์การขาย',icon:'฿',color:'#ff2d55',desc:'ติดตามดีลจากลูกค้าใหม่ถึงปิดการขาย',cols:['ลูกค้าใหม่','เสนอราคา','เจรจา','ปิดได้']}
+    ];
+    this.weekData=[{l:'จ',v:3},{l:'อ',v:5},{l:'พ',v:2},{l:'พฤ',v:6},{l:'ศ',v:4},{l:'ส',v:1},{l:'อา',v:2}];
+    this.pageMeta={
+      home:['หน้าแรก','ภาพรวมงานของคุณวันนี้'],
+      mine:['งานของฉัน','งานที่คุณรับผิดชอบ ทุกแผนงาน'],
+      inbox:['การแจ้งเตือน','ใครทำอะไรที่เกี่ยวกับคุณ'],
+      reports:['รายงาน','ภาระงาน ความคืบหน้า และสถิติการติ๊กงาน'],
+      audit:['ประวัติการตรวจสอบ (Audit log)','บันทึกทุกการกระทำ — ใคร ทำอะไร เมื่อไร'],
+      members:['สมาชิก & สิทธิ์การเข้าใช้','กลุ่มการเข้าใช้และสิ่งที่แต่ละกลุ่มทำได้'],
+      templates:['เทมเพลต','เริ่มแผนงานใหม่จากโครงสร้างที่ใช้บ่อย'],
+      trash:['ถังขยะ','หัวข้อและงานที่ลบไป กู้คืนได้ 30 วัน']
+    };
+  }
+
+  // ---------- helpers ----------
+  strict(){ return this.props.strictPermissions!==false; }
+  myGroups(){ return this.state.accessGroups.filter(g=>g.members.indexOf(this.state.me)>=0); }
+  can(k){ if(!this.strict()) return true; const P=this.state.perms; return this.myGroups().some(g=>!!(P[g.id]&&P[g.id][k])); }
+  deny(k){ const p=this.permList.find(x=>x.k===k); this.say('ไม่มีสิทธิ์: '+(p?p.label:k)+' — บทบาทของคุณคือ '+this.users[this.state.me].roleText); return false; }
+  say(msg){ this.setState({toast:msg}); clearTimeout(this._t); this._t=setTimeout(()=>this.setState({toast:''}),2600); }
+  now(){ const d=new Date(); const p=n=>(n<10?'0':'')+n; return 'วันนี้ '+p(d.getHours())+':'+p(d.getMinutes()); }
+  uid(pfx){ this._n=(this._n||0)+1; return pfx+'-'+Date.now().toString(36)+this._n; }
+  cloneProjects(){ return this.state.projects.map(p=>({...p,columns:p.columns.map(c=>({...c,cards:c.cards.map(cd=>({...cd,subs:cd.subs.map(s=>({...s}))}))}))})); }
+  proj(id,list){ return (list||this.state.projects).find(p=>p.id===id); }
+  curProjId(){ const n=this.state.nav; if(n.type==='project') return n.id; return 'p1'; }
+  curProj(list){ return this.proj(this.curProjId(),list); }
+  find(projs,cardId){ let out={card:null,col:null,proj:null}; projs.forEach(p=>p.columns.forEach(c=>c.cards.forEach(cd=>{ if(cd.id===cardId) out={card:cd,col:c,proj:p}; }))); return out; }
+  entry(verb,text,proj,task){ return {id:this.uid('a'),u:this.state.me,verb:verb,text:text,proj:proj||'-',task:task||'',time:this.now()}; }
+  push(state,verb,text,proj,task){ return {audit:[this.entry(verb,text,proj,task)].concat(state.audit)}; }
+  projName(id){ const p=this.proj(id); return p?p.name:'—'; }
+  dueFg(due){ const late=['17 ก.ค.','18 ก.ค.','19 ก.ค.','20 ก.ค.','21 ก.ค.','22 ก.ค.','23 ก.ค.','24 ก.ค.','25 ก.ค.']; return late.indexOf(due)>=0?'#ff3b30':'#86868b'; }
+  dayIndex(due){ const m=/(\d+)\s*(ก\.ค\.|ส\.ค\.)/.exec(due||''); if(!m) return -1; const d=parseInt(m[1],10); return m[2]==='ก.ค.'?d-21:10+d; }
+
+  // ---------- mutations ----------
+  toggleSub(cardId,subId){
+    if(!this.can('tick')) return this.deny('tick');
+    this.setState(s=>{
+      const projs=this.cloneProjects();
+      const {card,proj}=this.find(projs,cardId); if(!card) return {};
+      const subs=card.subs, i=subs.findIndex(x=>x.id===subId); if(i<0) return {};
+      const val=!subs[i].done, base=subs[i].depth, stamp=this.now(), me=s.me;
+      const set=(row,v)=>{ row.done=v; row.by=v?me:null; row.at=v?stamp:null; };
+      set(subs[i],val);
+      for(let j=i+1;j<subs.length&&subs[j].depth>base;j++) set(subs[j],val);
+      for(let j=subs.length-1;j>=0;j--){
+        const d=subs[j].depth, kids=[];
+        for(let k=j+1;k<subs.length&&subs[k].depth>d;k++) if(subs[k].depth===d+1) kids.push(subs[k]);
+        if(kids.length){ const all=kids.every(x=>x.done); if(all!==subs[j].done) set(subs[j],all); }
+      }
+      const label=subs[i].label;
+      const log=this.push(s,val?'tick':'untick',(val?'ติ๊ก':'ยกเลิกติ๊ก')+' “'+label+'” ใน '+cardId+(val?' ว่าเสร็จ':''),proj.id,cardId);
+      return Object.assign({projects:projs},log);
+    });
+  }
+  toggleAll(cardId){
+    if(!this.can('tick')) return this.deny('tick');
+    this.setState(s=>{
+      const projs=this.cloneProjects();
+      const {card,proj}=this.find(projs,cardId); if(!card) return {};
+      const done=card.subs.length&&card.subs.every(x=>x.done), val=!done, stamp=this.now();
+      card.subs.forEach(x=>{ x.done=val; x.by=val?s.me:null; x.at=val?stamp:null; });
+      const log=this.push(s,val?'tick':'untick',(val?'ติ๊กงานย่อยทั้งหมด':'ยกเลิกติ๊กทั้งหมด')+' ของ '+cardId+' ('+card.title+')',proj.id,cardId);
+      return Object.assign({projects:projs},log);
+    });
+  }
+  moveCard(cardId,toColId){
+    if(!this.can('create')) return this.deny('create');
+    this.setState(s=>{
+      const projs=this.cloneProjects();
+      const {card,col,proj}=this.find(projs,cardId); if(!card||!col||col.id===toColId) return {drag:null};
+      const to=proj.columns.find(c=>c.id===toColId); if(!to) return {drag:null};
+      col.cards.splice(col.cards.indexOf(card),1); to.cards.push(card);
+      const log=this.push(s,'move','ย้าย '+cardId+' จาก “'+col.name+'” ไป “'+to.name+'”',proj.id,cardId);
+      return Object.assign({projects:projs,drag:null},log);
+    });
+  }
+  addColumn(){
+    const name=(this.state.newColVal||'').trim();
+    if(!name){ this.setState({addingCol:false,newColVal:''}); return; }
+    this.setState(s=>{
+      const projs=this.cloneProjects(), p=this.curProj(projs);
+      const dot=this.pal[p.columns.length%this.pal.length];
+      p.columns.push({id:this.uid('c'),name:name,dot:dot,cards:[]});
+      const log=this.push(s,'addcol','เพิ่มหัวข้อ “'+name+'” ใน '+p.name,p.id,'');
+      return Object.assign({projects:projs,addingCol:false,newColVal:''},log);
+    });
+  }
+  delColumn(colId){
+    if(!this.can('cols')) return this.deny('cols');
+    this.setState(s=>{
+      const projs=this.cloneProjects(), p=this.curProj(projs);
+      if(p.columns.length<=1){ return {menu:null}; }
+      const i=p.columns.findIndex(c=>c.id===colId), col=p.columns[i];
+      p.columns.splice(i,1);
+      const item={id:this.uid('t'),kind:'หัวข้อ',name:col.name,proj:p.id,by:s.me,time:this.now(),payload:col,index:i};
+      const log=this.push(s,'delcol','ลบหัวข้อ “'+col.name+'” ('+col.cards.length+' งาน) → ถังขยะ',p.id,'');
+      return Object.assign({projects:projs,menu:null,trash:[item].concat(s.trash)},log);
+    });
+  }
+  restore(itemId){
+    this.setState(s=>{
+      const item=s.trash.find(t=>t.id===itemId); if(!item) return {};
+      const projs=this.cloneProjects(), p=this.proj(item.proj,projs);
+      p.columns.splice(Math.min(item.index,p.columns.length),0,item.payload);
+      const log=this.push(s,'restore','กู้คืนหัวข้อ “'+item.name+'” กลับเข้า '+p.name,p.id,'');
+      return Object.assign({projects:projs,trash:s.trash.filter(t=>t.id!==itemId)},log);
+    });
+  }
+  commitRename(colId){
+    const name=(this.state.renameVal||'').trim();
+    this.setState(s=>{
+      if(!name) return {renameId:null,renameVal:''};
+      const projs=this.cloneProjects(), p=this.curProj(projs), col=p.columns.find(c=>c.id===colId);
+      if(!col||col.name===name) return {renameId:null,renameVal:''};
+      const old=col.name; col.name=name;
+      const log=this.push(s,'rencol','เปลี่ยนชื่อหัวข้อ “'+old+'” → “'+name+'”',p.id,'');
+      return Object.assign({projects:projs,renameId:null,renameVal:''},log);
+    });
+  }
+  setColor(colId,c){
+    this.setState(s=>{
+      const projs=this.cloneProjects(), p=this.curProj(projs), col=p.columns.find(x=>x.id===colId);
+      if(col) col.dot=c;
+      return {projects:projs,menu:null};
+    });
+  }
+  addCard(colId){
+    const title=(this.state.newCardVal||'').trim();
+    if(!title){ this.setState({addCardCol:null,newCardVal:''}); return; }
+    this.setState(s=>{
+      const projs=this.cloneProjects(), p=this.curProj(projs), col=p.columns.find(c=>c.id===colId);
+      const seq=s.seq+1, id='T-'+seq;
+      col.cards.unshift({id:id,title:title,tag:'ทั่วไป',pri:'กลาง',who:s.me,due:'—',subs:[]});
+      const log=this.push(s,'create','สร้างงาน '+id+' “'+title+'” ในหัวข้อ '+col.name,p.id,id);
+      return Object.assign({projects:projs,addCardCol:null,newCardVal:'',seq:seq},log);
+    });
+  }
+  addSub(){
+    const label=(this.state.newSubVal||'').trim();
+    if(!label){ this.setState({addingSub:false,newSubVal:''}); return; }
+    this.setState(s=>{
+      const projs=this.cloneProjects();
+      const {card,proj}=this.find(projs,s.activeId); if(!card) return {addingSub:false,newSubVal:''};
+      card.subs.push({id:this.uid('s'),label:label,depth:0,done:false,by:null,at:null});
+      const log=this.push(s,'addsub','เพิ่มงานย่อย “'+label+'” ใน '+card.id,proj.id,card.id);
+      return Object.assign({projects:projs,addingSub:false,newSubVal:''},log);
+    });
+  }
+  assign(cardId,uid){
+    if(!this.can('create')) return this.deny('create');
+    this.setState(s=>{
+      const projs=this.cloneProjects();
+      const {card,proj}=this.find(projs,cardId); if(!card) return {};
+      card.who=uid;
+      const log=this.push(s,'assign','มอบหมาย '+cardId+' ให้ '+this.users[uid].name,proj.id,cardId);
+      return Object.assign({projects:projs},log);
+    });
+  }
+  togglePerm(gid,k){
+    if(!this.can('members')) return this.deny('members');
+    this.setState(s=>{
+      const perms=JSON.parse(JSON.stringify(s.perms));
+      const val=!perms[gid][k]; perms[gid][k]=val?1:0;
+      const g=s.accessGroups.find(x=>x.id===gid), p=this.permList.find(x=>x.k===k);
+      const log=this.push(s,'perm',(val?'เปิด':'ปิด')+'สิทธิ์ “'+p.label+'” ของกลุ่ม '+g.name,'-','');
+      return Object.assign({perms:perms},log);
+    });
+  }
+  go(type,id){ this.setState({nav:{type:type,id:id},panelOpen:false,menu:null,query:''}); }
+  openTask(cardId){
+    const {proj}=this.find(this.state.projects,cardId); if(!proj) return;
+    this.setState({nav:{type:'project',id:proj.id},activeId:cardId,panelOpen:true,menu:null,query:''});
+  }
+
+  // ---------- mapping ----------
+  mapSub(cardId,s,withBy){
+    const u=s.by?this.users[s.by]:null;
+    return {label:s.label,pad:s.depth*22,on:s.done?'on':'',
+      txt:s.done?'color:#a1a1a6;text-decoration:line-through':'',
+      byIni:u?u.ini:'',byBg:u?u.bg:'transparent',byFg:u?u.fg:'transparent',
+      byTitle:u?('ติ๊กโดย '+u.name+' · '+s.at):'ยังไม่เสร็จ',
+      byText:u?(u.ini+' · '+s.at):'',
+      toggle:e=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.toggleSub(cardId,s.id); }};
+  }
+  mapCard(c,col,proj){
+    const st=this.tagStyle[c.tag]||['#eeeef0','#636366'];
+    const total=c.subs.length, done=c.subs.filter(x=>x.done).length;
+    const who=this.users[c.who]||this.users.kr;
+    return {id:c.id,title:c.title,tag:c.tag,pri:c.pri,due:c.due,
+      tagBg:st[0],tagFg:st[1],priFg:this.priStyle[c.pri]||'#8e8e93',dueFg:this.dueFg(c.due),
+      who:who.ini,whoBg:who.bg,whoFg:who.fg,
+      hasSubs:total>0,pct:total?Math.round(done/total*100):0,progText:done+'/'+total,
+      allOn:total&&done===total?'on':'',
+      rowTxt:total&&done===total?'color:#a1a1a6;text-decoration:line-through':'',
+      colName:col?col.name:'',projName:proj?proj.name:'',
+      subs:c.subs.map(s=>this.mapSub(c.id,s)),
+      open:()=>this.openTask(c.id),
+      stop:e=>{ if(e&&e.stopPropagation)e.stopPropagation(); },
+      toggleAll:e=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.toggleAll(c.id); },
+      dragStart:e=>{ this.setState({drag:c.id}); if(e&&e.dataTransfer)e.dataTransfer.effectAllowed='move'; }};
+  }
+  allCards(){ const out=[]; this.state.projects.forEach(p=>p.columns.forEach(c=>c.cards.forEach(cd=>out.push({card:cd,col:c,proj:p})))); return out; }
+  filterSort(cards){
+    const S=this.state;
+    let out=cards.filter(c=>{
+      if(S.filterPri.length&&S.filterPri.indexOf(c.pri)<0) return false;
+      if(S.filterMine&&c.who!==S.me) return false;
+      return true;
+    });
+    const pri={'สูง':0,'กลาง':1,'ต่ำ':2};
+    if(S.sort==='due') out=out.slice().sort((a,b)=>this.dayIndex(a.due)-this.dayIndex(b.due));
+    if(S.sort==='pri') out=out.slice().sort((a,b)=>pri[a.pri]-pri[b.pri]);
+    if(S.sort==='title') out=out.slice().sort((a,b)=>a.title.localeCompare(b.title,'th'));
+    return out;
+  }
+  mapAudit(a){
+    const u=this.users[a.u]||this.users.kr, v=this.verbInfo[a.verb]||['อื่น ๆ','#eeeef0','#48484a'];
+    return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name,roleText:u.roleText,text:a.text,time:a.time,
+      verbLabel:v[0],verbBg:v[1],verbFg:v[2],projName:a.proj==='-'?'ทั้งเวิร์กสเปซ':this.projName(a.proj)};
+  }
+
+  renderVals(){
+    const S=this.state, nav=S.nav, me=this.users[S.me];
+    const q=(S.query||'').trim();
+    const searching=q.length>0;
+    const isPage=k=>!searching&&nav.type==='page'&&nav.id===k;
+    const isProject=searching||(nav.type==='project');
+    const projs=S.projects;
+    const cp=this.curProj();
+
+    // sidebar
+    const openCount=uid=>this.allCards().filter(x=>x.card.who===uid&&x.col.id!=='done'&&x.col.id!=='won'&&x.col.id!=='last').length;
+    const mineCount=this.allCards().filter(x=>x.card.who===S.me).length;
+    const unread=S.notes.filter(n=>!n.read).length;
+    const navMain=[
+      {key:'home',label:'หน้าแรก',icon:'⌂',bg:'#007aff',badge:''},
+      {key:'mine',label:'งานของฉัน',icon:'✓',bg:'#ff9500',badge:mineCount},
+      {key:'inbox',label:'การแจ้งเตือน',icon:'✉',bg:'#ff2d55',badge:unread?unread:''}
+    ].map(n=>({label:n.label,icon:n.icon,bg:n.bg,badge:n.badge,
+      badgeBg:n.key==='inbox'&&unread?'#ff2d55':'transparent',badgeFg:n.key==='inbox'&&unread?'#fff':'#86868b',
+      on:isPage(n.key)?'on':'',go:()=>this.go('page',n.key)}));
+    const navGroups=S.wsGroups.map(g=>({label:g.name,bg:g.color,
+      badge:projs.filter(p=>p.group===g.id).length,
+      on:!searching&&nav.type==='group'&&nav.id===g.id?'on':'',go:()=>this.go('group',g.id)}));
+    const navPlans=projs.map(p=>({label:p.name,bg:p.color,
+      badge:p.columns.reduce((n,c)=>n+c.cards.length,0),
+      on:!searching&&nav.type==='project'&&nav.id===p.id?'on':'',go:()=>this.go('project',p.id)}));
+    const navAdmin=[
+      {key:'reports',label:'รายงาน',icon:'▤',bg:'#5856d6'},
+      {key:'audit',label:'ประวัติตรวจสอบ',icon:'◔',bg:'#00b0c8'},
+      {key:'members',label:'สมาชิก & สิทธิ์',icon:'⚿',bg:'#af52de'},
+      {key:'templates',label:'เทมเพลต',icon:'⌗',bg:'#34c759'},
+      {key:'trash',label:'ถังขยะ',icon:'🗑',bg:'#8e8e93'}
+    ].map(n=>({label:n.label,icon:n.icon,bg:n.bg,
+      badge:n.key==='trash'&&S.trash.length?S.trash.length:(n.key==='audit'?S.audit.length:''),
+      on:isPage(n.key)?'on':'',go:()=>this.go('page',n.key)}));
+
+    // header
+    let pageTitle='',pageSub='';
+    if(searching){ pageTitle='ผลค้นหา “'+q+'”'; }
+    else if(nav.type==='project'){
+      const total=cp.columns.reduce((n,c)=>n+c.cards.length,0);
+      const doneCol=cp.columns[cp.columns.length-1];
+      pageTitle=cp.name; pageSub=total+' งาน · '+cp.columns.length+' หัวข้อ · เสร็จแล้ว '+doneCol.cards.length;
+    } else if(nav.type==='group'){
+      const g=S.wsGroups.find(x=>x.id===nav.id);
+      pageTitle=g.name; pageSub=projs.filter(p=>p.group===g.id).length+' แผนงาน · '+g.members.length+' สมาชิก';
+    } else { const m=this.pageMeta[nav.id]||['',''];
+      pageTitle=m[0]; pageSub=nav.id==='home'?(m[1]+' · '+me.name):m[1]; }
+
+    // project board
+    const draggedOK=()=>!!S.drag;
+    const cols=(nav.type==='project'||searching)?cp.columns.map(col=>{
+      let cards=col.cards;
+      if(searching){ const qq=q.toLowerCase();
+        cards=cards.filter(c=>c.title.toLowerCase().indexOf(qq)>=0||c.id.toLowerCase().indexOf(qq)>=0||c.subs.some(s=>s.label.toLowerCase().indexOf(qq)>=0)); }
+      cards=this.filterSort(cards);
+      const renaming=S.renameId===col.id;
+      return {id:col.id,name:col.name,dot:col.dot,count:cards.length,
+        cards:cards.map(c=>this.mapCard(c,col,cp)),
+        renaming:renaming,showName:!renaming,renameVal:S.renameVal,
+        menuOn:S.menu==='col:'+col.id,
+        adding:S.addCardCol===col.id,newCard:S.newCardVal,
+        setRename:e=>this.setState({renameVal:e.target.value}),
+        renameKey:e=>{ if(e.key==='Enter') this.commitRename(col.id); if(e.key==='Escape') this.setState({renameId:null}); },
+        commitRename:()=>this.commitRename(col.id),
+        startRename:e=>{ if(e&&e.stopPropagation)e.stopPropagation(); if(!this.can('cols')) return this.deny('cols'); this.setState({renameId:col.id,renameVal:col.name,menu:null}); },
+        toggleMenu:e=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.setState({menu:S.menu==='col:'+col.id?null:'col:'+col.id}); },
+        del:e=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.delColumn(col.id); },
+        addCard:e=>{ if(e&&e.stopPropagation)e.stopPropagation(); if(!this.can('create')) return this.deny('create'); this.setState({addCardCol:col.id,newCardVal:'',menu:null}); },
+        setNewCard:e=>this.setState({newCardVal:e.target.value}),
+        newCardKey:e=>{ if(e.key==='Enter') this.addCard(col.id); if(e.key==='Escape') this.setState({addCardCol:null}); },
+        swatches:this.pal.map(c=>({c:c,pick:e=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.setColor(col.id,c); }})),
+        dragOver:e=>e.preventDefault(),
+        drop:e=>{ e.preventDefault(); if(draggedOK()) this.moveCard(S.drag,col.id); }};
+    }):[];
+
+    // panel
+    const found=this.find(projs,S.activeId);
+    let sel;
+    if(found.card){
+      const c=found.card, st=this.tagStyle[c.tag]||['#eeeef0','#636366'];
+      const total=c.subs.length, done=c.subs.filter(x=>x.done).length;
+      const lastDone=c.subs.filter(x=>x.done&&x.at).slice(-1)[0];
+      const lu=lastDone?this.users[lastDone.by]:null;
+      sel={id:c.id,title:c.title,tag:c.tag,tagBg:st[0],tagFg:st[1],pri:c.pri,priFg:this.priStyle[c.pri]||'#8e8e93',
+        due:c.due,dueFg:this.dueFg(c.due),projName:found.proj.name,progText:done+'/'+total,
+        subs:c.subs.map(s=>this.mapSub(c.id,s,true)),
+        statusOpts:found.proj.columns.map(col=>({label:col.name,on:col.id===found.col.id?'on':'',
+          pick:()=>this.moveCard(c.id,col.id)})),
+        assignOpts:this.userOrder.map(uid=>{ const u=this.users[uid];
+          return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name,
+            ring:uid===c.who?'0 0 0 2px #007aff':'0 0 0 1px rgba(0,0,0,.08)',
+            pick:()=>this.assign(c.id,uid)}; }),
+        lastIni:lu?lu.ini:'—',lastBg:lu?lu.bg:'#eeeef0',lastFg:lu?lu.fg:'#636366',
+        lastText:lu?('ติ๊กล่าสุดโดย '+lu.name+' — “'+lastDone.label+'” · '+lastDone.at):'ยังไม่มีใครติ๊กงานย่อยในงานนี้',
+        activity:S.audit.filter(a=>a.task===c.id).slice(0,6).map(a=>this.mapAudit(a)),
+        addingSub:S.addingSub,newSub:S.newSubVal,
+        addSub:()=>{ if(!this.can('create')) return this.deny('create'); this.setState({addingSub:true,newSubVal:''}); },
+        setNewSub:e=>this.setState({newSubVal:e.target.value}),
+        newSubKey:e=>{ if(e.key==='Enter') this.addSub(); if(e.key==='Escape') this.setState({addingSub:false}); }};
+    } else sel={id:'',title:'',tag:'',tagBg:'#eee',tagFg:'#636366',pri:'',priFg:'#8e8e93',due:'',dueFg:'#86868b',projName:'',progText:'0/0',subs:[],statusOpts:[],assignOpts:[],lastIni:'',lastBg:'#eee',lastFg:'#888',lastText:'',activity:[],addingSub:false,newSub:''};
+
+    // home
+    const all=this.allCards();
+    const mineAll=all.filter(x=>x.card.who===S.me);
+    const openMine=mineAll.filter(x=>!(x.card.subs.length&&x.card.subs.every(s=>s.done)));
+    const lateList=['17 ก.ค.','18 ก.ค.','19 ก.ค.','20 ก.ค.','21 ก.ค.','22 ก.ค.','23 ก.ค.','24 ก.ค.','25 ก.ค.'];
+    const homeStats=[
+      {label:'งานของฉันที่ค้าง',value:openMine.length,hint:'ทุกแผนงาน',fg:'#1d1d1f'},
+      {label:'เลยกำหนด',value:mineAll.filter(x=>lateList.indexOf(x.card.due)>=0).length,hint:'ต้องจัดการก่อน',fg:'#ff3b30'},
+      {label:'รอตรวจ (ทั้งทีม)',value:all.filter(x=>x.col.name.indexOf('ตรวจ')>=0||x.col.id==='qa').length,hint:'รอผู้ตรวจสอบ',fg:'#ff9500'},
+      {label:'ติ๊กเสร็จวันนี้',value:S.audit.filter(a=>a.verb==='tick'&&a.time.indexOf('วันนี้')===0).length,hint:'จาก audit log',fg:'#34c759'}
+    ];
+    const upcoming=this.filterSort(all.filter(x=>this.dayIndex(x.card.due)>=0).map(x=>x.card))
+      .slice(0,7).map(c=>{ const f=this.find(projs,c.id); return this.mapCard(c,f.col,f.proj); });
+    const projProgress=projs.map(p=>{ let t=0,d=0;
+      p.columns.forEach(c=>c.cards.forEach(cd=>{ t+=cd.subs.length||1; d+=cd.subs.filter(s=>s.done).length||0; }));
+      return {name:p.name,color:p.color,pct:t?Math.round(d/t*100):0,text:(t?Math.round(d/t*100):0)+'%',open:()=>this.go('project',p.id)}; });
+    const recentAudit=S.audit.slice(0,6).map(a=>this.mapAudit(a));
+
+    // mine page
+    const bucket=(lo,hi)=>mineAll.filter(x=>{ const i=this.dayIndex(x.card.due); return i>=lo&&i<=hi; });
+    const mk=(label,fg,items)=>({label:label,fg:fg,count:items.length,empty:items.length===0,
+      cards:items.map(x=>this.mapCard(x.card,x.col,x.proj))});
+    const mineGroups=[
+      mk('เลยกำหนด / วันนี้','#ff3b30',bucket(-1,5)),
+      mk('สัปดาห์นี้','#ff9500',bucket(6,10)),
+      mk('ถัดไป','#86868b',bucket(11,20))
+    ];
+
+    // group page
+    let groupPlans=[],groupMembers=[],groupAudit=[];
+    if(nav.type==='group'){
+      const g=S.wsGroups.find(x=>x.id===nav.id);
+      groupPlans=projs.filter(p=>p.group===g.id).map(p=>{ let t=0,d=0;
+        p.columns.forEach(c=>c.cards.forEach(cd=>{ t+=cd.subs.length||1; d+=cd.subs.filter(s=>s.done).length; }));
+        return {name:p.name,color:p.color,pct:t?Math.round(d/t*100):0,
+          text:p.columns.reduce((n,c)=>n+c.cards.length,0)+' งาน · '+(t?Math.round(d/t*100):0)+'%',
+          colChips:p.columns.map(c=>({label:c.name+' '+c.cards.length})),
+          open:()=>this.go('project',p.id)}; });
+      groupMembers=g.members.map(uid=>{ const u=this.users[uid];
+        return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name,roleText:u.roleText,openText:openCount(uid)+' งานค้าง'}; });
+      const ids=projs.filter(p=>p.group===g.id).map(p=>p.id);
+      groupAudit=S.audit.filter(a=>ids.indexOf(a.proj)>=0).slice(0,7).map(a=>this.mapAudit(a));
+    }
+
+    // audit page
+    const verbChips=[['all','ทั้งหมด'],['tick','ติ๊กเสร็จ'],['move','ย้ายสถานะ'],['addcol','เพิ่ม/ลบหัวข้อ'],['perm','แก้สิทธิ์']];
+    const auditChips=verbChips.map(v=>({label:v[1],on:S.auditVerb===v[0]?'on':'',pick:()=>this.setState({auditVerb:v[0]})}));
+    const auditUsers=this.userOrder.map(uid=>{ const u=this.users[uid];
+      return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name,
+        ring:S.auditUser===uid?'0 0 0 2px #007aff':'0 0 0 1px rgba(0,0,0,.08)',
+        pick:()=>this.setState({auditUser:S.auditUser===uid?'all':uid})}; });
+    const auditRows=S.audit.filter(a=>{
+      if(S.auditUser!=='all'&&a.u!==S.auditUser) return false;
+      if(S.auditVerb==='all') return true;
+      if(S.auditVerb==='addcol') return a.verb==='addcol'||a.verb==='delcol'||a.verb==='rencol';
+      if(S.auditVerb==='tick') return a.verb==='tick'||a.verb==='untick';
+      return a.verb===S.auditVerb;
+    }).map(a=>this.mapAudit(a));
+
+    // members page
+    const accessGroups=S.accessGroups.map(g=>({name:g.name,color:g.color,desc:g.desc,count:g.members.length,
+      members:g.members.map((uid,i)=>{ const u=this.users[uid]; return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name,ml:i?-8:0}; })}));
+    const permRows=this.permList.map(p=>({label:p.label,hint:p.hint,
+      cells:S.accessGroups.map(g=>({on:S.perms[g.id][p.k]?'on':'',toggle:()=>this.togglePerm(g.id,p.k)}))}));
+    const myPermText=this.permList.filter(p=>this.can(p.k)).map(p=>p.label).join(' · ')||'ดูอย่างเดียว';
+
+    // reports
+    const maxOpen=Math.max(1,...this.userOrder.map(uid=>openCount(uid)));
+    const workload=this.userOrder.map(uid=>{ const u=this.users[uid], n=openCount(uid);
+      return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name.split(' ')[0],pct:Math.round(n/maxOpen*100),text:n+' งาน'}; });
+    const distMap={};
+    all.forEach(x=>{ const k=x.col.name; distMap[k]=distMap[k]||{n:0,dot:x.col.dot}; distMap[k].n++; });
+    const maxDist=Math.max(1,...Object.keys(distMap).map(k=>distMap[k].n));
+    const statusDist=Object.keys(distMap).map(k=>({name:k,count:distMap[k].n,dot:distMap[k].dot,pct:Math.round(distMap[k].n/maxDist*100)}));
+    const tickMap={};
+    S.audit.filter(a=>a.verb==='tick').forEach(a=>{ tickMap[a.u]=(tickMap[a.u]||0)+1; });
+    this.state.projects.forEach(p=>p.columns.forEach(c=>c.cards.forEach(cd=>cd.subs.forEach(s=>{ if(s.done&&s.by) tickMap[s.by]=(tickMap[s.by]||0); }))));
+    const tickers=this.userOrder.map(uid=>{ const u=this.users[uid];
+      let n=S.audit.filter(a=>a.verb==='tick'&&a.u===uid).length;
+      all.forEach(x=>x.card.subs.forEach(s=>{ if(s.done&&s.by===uid) n++; }));
+      return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name,count:n}; }).sort((a,b)=>b.count-a.count);
+    const maxWeek=Math.max(...this.weekData.map(w=>w.v));
+    const weekBars=this.weekData.map(w=>({label:w.l,value:w.v,h:Math.round(w.v/maxWeek*84)+8,color:w.v>=maxWeek?'#007aff':'#c9dcf7'}));
+
+    // calendar + timeline
+    const dayLabel=i=>i<=10?(21+i)+' ก.ค.':(i-10)+' ส.ค.';
+    const calDays=[];
+    for(let i=0;i<14;i++){
+      const items=[];
+      if(nav.type==='project'||searching) cp.columns.forEach(col=>col.cards.forEach(c=>{ if(this.dayIndex(c.due)===i) items.push({title:c.title,bg:col.dot,open:()=>this.openTask(c.id)}); }));
+      calDays.push({label:dayLabel(i),bg:i===5?'#f0f7ff':'#fff',fg:i===5?'#007aff':'#86868b',weight:i===5?'700':'400',items:items});
+    }
+    const weekNames=['จ','อ','พ','พฤ','ศ','ส','อา'].map(w=>({label:w}));
+    const tlDays=[]; for(let i=0;i<14;i++) tlDays.push({label:dayLabel(i).replace(' ก.ค.','').replace(' ส.ค.','/8'),fg:i===5?'#007aff':'#a1a1a6'});
+    const tlRows=[];
+    if(nav.type==='project'||searching) cp.columns.forEach(col=>col.cards.forEach(c=>{
+      const i=this.dayIndex(c.due); if(i<0) return;
+      const start=Math.max(0,i-3), span=i-start+1;
+      const total=c.subs.length, done=c.subs.filter(x=>x.done).length;
+      tlRows.push({title:c.title,dot:col.dot,left:Math.round(start/14*1000)/10,width:Math.round(span/14*1000)/10,
+        progText:total?done+'/'+total:c.pri,open:()=>this.openTask(c.id)});
+    }));
+
+    // trash / templates / notes
+    const trash=S.trash.map(t=>({name:t.name,kind:t.kind,projName:this.projName(t.proj),byName:this.users[t.by].name,
+      time:t.time,countText:t.payload.cards.length+' งานข้างใน',restore:()=>this.restore(t.id)}));
+    const templates=this.templates.map(t=>({name:t.name,desc:t.desc,icon:t.icon,color:t.color,
+      cols:t.cols.map(c=>({label:c})),
+      use:()=>{ if(!this.can('cols')) return this.deny('cols'); this.say('สร้างแผนงานใหม่จากเทมเพลต “'+t.name+'” แล้ว'); }}));
+    const notes=S.notes.map(n=>{ const u=this.users[n.u];
+      return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name,text:n.text,time:n.time,kindLabel:n.kind,
+        projName:n.proj==='-'?'ทั้งเวิร์กสเปซ':this.projName(n.proj),
+        dot:n.read?'transparent':'#007aff',weight:n.read?'520':'700',
+        open:()=>{ this.setState(s=>({notes:s.notes.map(x=>x.id===n.id?{...x,read:true}:x)})); if(n.task) this.openTask(n.task); }}; });
+
+    const viewOpts=[['board','บอร์ด'],['list','รายการ'],['calendar','ปฏิทิน'],['timeline','ไทม์ไลน์']]
+      .filter(v=>v[0]!=='timeline'||this.props.showTimeline!==false)
+      .map(v=>({label:v[1],on:S.view===v[0]?'on':'',pick:()=>this.setState({view:v[0]})}));
+    const sortLabels={due:'กำหนดส่ง',pri:'ความสำคัญ',title:'ชื่อ'};
+    const teamIds=nav.type==='group'?S.wsGroups.find(x=>x.id===nav.id).members:(cp?(S.wsGroups.find(g=>g.id===cp.group)||{members:[]}).members:[]);
+
+    return {
+      winTitle:'TeamPlan — '+pageTitle, pageTitle:pageTitle, pageSub:pageSub,
+      me:{ini:me.ini,name:me.name,bg:me.bg,fg:me.fg,roleText:me.roleText},
+      query:S.query, setQuery:e=>this.setState({query:e.target.value,panelOpen:false}),
+      navMain:navMain, navGroups:navGroups, navPlans:navPlans, navAdmin:navAdmin,
+      userMenuOpen:S.menu==='user', toggleUserMenu:()=>this.setState({menu:S.menu==='user'?null:'user'}),
+      userOpts:this.userOrder.map(uid=>{ const u=this.users[uid];
+        return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name,roleText:u.roleText,check:uid===S.me?'✓':'',
+          pick:()=>{ this.setState({me:uid,menu:null}); this.say('สลับเป็น '+u.name+' — '+u.roleText); }}; }),
+      teamAvatars:teamIds.map((uid,i)=>{ const u=this.users[uid]; return {ini:u.ini,bg:u.bg,fg:u.fg,name:u.name,ml:i?-8:0}; }),
+      showNewTask:isProject, newTask:()=>{ if(!this.can('create')) return this.deny('create');
+        const first=cp.columns[0]; this.setState({view:'board',addCardCol:first.id,newCardVal:'',nav:{type:'project',id:cp.id},query:''}); },
+      isProject:isProject, isHome:isPage('home'), isMine:isPage('mine'), isInbox:isPage('inbox'),
+      isReports:isPage('reports'), isAudit:isPage('audit'), isMembers:isPage('members'),
+      isTemplates:isPage('templates'), isTrash:isPage('trash'),
+      isGroup:!searching&&nav.type==='group',
+      isBoard:S.view==='board', isList:S.view==='list', isCal:S.view==='calendar', isTimeline:S.view==='timeline',
+      viewOpts:viewOpts,
+      cols:cols,
+      addingCol:S.addingCol, notAddingCol:!S.addingCol, newColVal:S.newColVal,
+      startAddCol:()=>{ if(!this.can('cols')) return this.deny('cols'); this.setState({addingCol:true,newColVal:'',menu:null}); },
+      setNewCol:e=>this.setState({newColVal:e.target.value}),
+      newColKey:e=>{ if(e.key==='Enter') this.addColumn(); if(e.key==='Escape') this.setState({addingCol:false}); },
+      commitNewCol:()=>this.addColumn(), cancelNewCol:()=>this.setState({addingCol:false,newColVal:''}),
+      filterOpen:S.menu==='filter', toggleFilter:()=>this.setState({menu:S.menu==='filter'?null:'filter'}),
+      filterCount:(S.filterPri.length+(S.filterMine?1:0))||'',
+      priChips:['สูง','กลาง','ต่ำ'].map(p=>({label:p,on:S.filterPri.indexOf(p)>=0?'on':'',
+        pick:()=>this.setState(s=>({filterPri:s.filterPri.indexOf(p)>=0?s.filterPri.filter(x=>x!==p):s.filterPri.concat([p])}))})),
+      mineOn:S.filterMine?'on':'', toggleMine:()=>this.setState(s=>({filterMine:!s.filterMine})),
+      clearFilter:()=>this.setState({filterPri:[],filterMine:false,menu:null}),
+      sortOpen:S.menu==='sort', toggleSort:()=>this.setState({menu:S.menu==='sort'?null:'sort'}),
+      sortLabel:sortLabels[S.sort],
+      sortOpts:Object.keys(sortLabels).map(k=>({label:sortLabels[k],check:S.sort===k?'✓':'',pick:()=>this.setState({sort:k,menu:null})})),
+      panelOpen:S.panelOpen&&!!found.card, closePanel:()=>this.setState({panelOpen:false}), sel:sel,
+      homeStats:homeStats, upcoming:upcoming, projProgress:projProgress, recentAudit:recentAudit,
+      goAudit:()=>this.go('page','audit'),
+      mineGroups:mineGroups,
+      notes:notes, markAllRead:()=>this.setState(s=>({notes:s.notes.map(n=>({...n,read:true}))})),
+      groupPlans:groupPlans, groupMembers:groupMembers, groupAudit:groupAudit,
+      auditChips:auditChips, auditUsers:auditUsers, auditRows:auditRows,
+      exportAudit:()=>{ if(!this.can('audit')) return this.deny('audit'); this.say('ส่งออก audit log '+auditRows.length+' รายการเป็น CSV'); },
+      accessGroups:accessGroups, permRows:permRows, myPermText:myPermText,
+      inviteMember:()=>{ if(!this.can('members')) return this.deny('members'); this.say('ส่งคำเชิญแล้ว — ผู้รับจะเข้ากลุ่ม “สมาชิกทีม” โดยค่าเริ่มต้น'); },
+      workload:workload, statusDist:statusDist, tickers:tickers, weekBars:weekBars,
+      calDays:calDays, weekNames:weekNames, tlDays:tlDays, tlRows:tlRows,
+      templates:templates, trash:trash, trashEmpty:trash.length===0,
+      menuOpen:!!S.menu, closeMenu:()=>this.setState({menu:null}),
+      toastOn:!!S.toast, toast:S.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

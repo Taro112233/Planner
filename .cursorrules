@@ -11,22 +11,22 @@
 ## 🏗️ Architecture Overview
 
 ### Authentication System
-- **Better Auth** (`lib/auth.ts`) — Email/password + Google OAuth
+- **Better Auth** (`lib/server/auth.ts`) — Email/password + Google OAuth
 - **Session:** 7-day expiry, tracks IP/userAgent
 - **User fields:** firstName, lastName, phone, role (USER|ADMIN|SUPERADMIN), status, isActive
 - **Hook:** `useCurrentUser()` — user, loading, isAuthenticated, isAdmin, logout, refetch
 
 ### Security (Arcjet)
-Three instances in `lib/arcjet-config.ts`:
+Three instances in `lib/server/arcjet-config.ts`:
 1. `arcjetAuth` — Auth endpoints (5 req/15min, no bots)
 2. `arcjetAPI` — General APIs (20 req/min, allow search engines)
 3. `arcjetUpload` — File uploads (5 req/min, no bots)
 
 Helper functions: `getClientIP()`, `handleArcjetDecision()`, `getRateLimitInfo()`
 
-Security logging (`lib/security-logger.ts`): `logSecurityEvent()`, `getSecurityStats()`, `getThreatLevel()`
+Security logging (`lib/server/security-logger.ts`): `logSecurityEvent()`, `getSecurityStats()`, `getThreatLevel()`
 
-### RBAC System (`lib/role-helpers.ts`)
+### RBAC System (`lib/shared/role-helpers.ts`)
 **Hierarchy:** USER (1) → ADMIN (2) → SUPERADMIN (3)
 
 Key functions: `hasPermission(role, action)`, `canManageUser()`, `canAccessAdminPanel()`, `getRoleInfo()`
@@ -38,7 +38,7 @@ ADMIN:      + users.view_all, dashboard.access
 SUPERADMIN: all actions
 ```
 
-### Theme System (`lib/theme-manager.ts`)
+### Theme System (`lib/client/theme-manager.ts`)
 **18 accent colors:** Neutral, Amber, Blue, Cyan, Emerald, Fuchsia, Green, Indigo, Lime, Orange, Pink, Purple, Red, Rose, Sky, Teal, Violet, Yellow
 
 **Base surface:** Stone (locked — near-zero chroma in dark mode, warm-white in light mode)
@@ -62,8 +62,8 @@ Hook: `useTheme()` — `activeAccent`, `mode`, `isDark`, `currentAccent`, `accen
 **localStorage keys:** `nextjs-starter-accent`, `nextjs-starter-mode`
 
 ### File Handling
-- **Validation** (`lib/file-validation.ts`): `validateFile()`, `validateFiles()`, `sanitizeFilename()`
-- **Upload** (`lib/file-upload.ts`): `uploadFile()`, `uploadMultipleFiles()` → Vercel Blob
+- **Validation** (`lib/server/file-validation.ts`): `validateFile()`, `validateFiles()`, `sanitizeFilename()`
+- **Upload** (`lib/server/file-upload.ts`): `uploadFile()`, `uploadMultipleFiles()` → Vercel Blob
 
 ---
 
@@ -127,22 +127,25 @@ hooks/
 └── useMutation.ts                 # ★ Generic create/update/delete hook
 
 lib/
-├── auth.ts                        # Better Auth config
-├── auth-client.ts                 # Client-side auth
-├── auth-helpers.ts                # Server-side role checks (hasAdminAccess, normalizeRole)
-├── arcjet-config.ts               # 3 Arcjet instances
-├── security-logger.ts             # Security event logging
-├── role-helpers.ts                # RBAC functions
-├── theme-manager.ts               # Theme persistence
-├── file-upload.ts                 # Vercel Blob upload
-├── file-validation.ts             # File type/size guards
-├── rich-text-utils.ts             # Tiptap text extraction
-├── prisma.ts                      # Prisma singleton (Neon adapter)
-├── utils.ts                       # cn() utility
-├── api-response.ts                # ★ apiSuccess(), apiError(), paginatedSuccess()
-├── pagination.ts                  # ★ parsePaginationParams(), buildPaginationMeta()
-├── date-utils.ts                  # ★ formatDate(), getMonthRange(), getFiscalYear()
-└── query-builder.ts               # ★ buildSearchWhere(), buildDateRangeWhere(), mergeWhere()
+├── server/                        # Node-runtime only — not Edge-safe
+│   ├── auth.ts                    # Better Auth config
+│   ├── arcjet-config.ts           # 3 Arcjet instances
+│   ├── security-logger.ts         # Security event logging
+│   ├── file-upload.ts             # Vercel Blob upload
+│   ├── file-validation.ts         # File type/size guards
+│   ├── prisma.ts                  # Prisma singleton (Neon adapter)
+│   ├── api-response.ts            # ★ apiSuccess(), apiError(), paginatedSuccess()
+│   ├── pagination.ts              # ★ parsePaginationParams(), buildPaginationMeta()
+│   └── query-builder.ts           # ★ buildSearchWhere(), buildDateRangeWhere(), mergeWhere()
+├── client/                        # Browser-only — imported by 'use client' code
+│   ├── auth-client.ts             # Client-side auth
+│   ├── theme-manager.ts           # Theme persistence
+│   └── utils.ts                   # cn() utility
+└── shared/                        # Framework-agnostic pure logic, either side
+    ├── auth-helpers.ts            # Role checks (hasAdminAccess, normalizeRole)
+    ├── role-helpers.ts            # RBAC functions
+    ├── rich-text-utils.ts         # Tiptap text extraction
+    └── date-utils.ts              # ★ formatDate(), getMonthRange(), getFiscalYear()
 
 types/
 ├── profile.ts                     # UserProfile, UpdateProfileRequest
@@ -264,16 +267,16 @@ Then add the route to `PROTECTED_ROUTE_PREFIXES` in `middleware.ts`.
 // app/api/items/route.ts
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { arcjetAPI } from '@/lib/arcjet-config'
-import { parsePaginationParams, buildPaginationMeta } from '@/lib/pagination'
-import { buildSearchWhere } from '@/lib/query-builder'
+import { auth } from '@/lib/server/auth'
+import { prisma } from '@/lib/server/prisma'
+import { arcjetAPI } from '@/lib/server/arcjet-config'
+import { parsePaginationParams, buildPaginationMeta } from '@/lib/server/pagination'
+import { buildSearchWhere } from '@/lib/server/query-builder'
 import {
   apiSuccess, paginatedSuccess,
   apiUnauthorized, apiForbidden,
   apiZodError, apiInternalError,
-} from '@/lib/api-response'
+} from '@/lib/server/api-response'
 
 const CreateSchema = z.object({ name: z.string().min(1) })
 
@@ -375,7 +378,7 @@ import { ConfirmDeleteModal, ConfirmLeaveModal } from '@/components/shared'
 
 ### Adding a role permission
 ```typescript
-// lib/role-helpers.ts — add to adminActions array
+// lib/shared/role-helpers.ts — add to adminActions array
 'new-feature.access',
 
 // In component or API
@@ -553,9 +556,9 @@ services/*.service.test.ts   ← Layer 3: Unit tests  (mock Prisma, no real DB)
 // app/api/items/route.ts  — CONTROLLER example
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/server/auth'
 import { apiSuccess, apiCreated, apiUnauthorized,
-         apiNotFound, apiZodError, apiInternalError } from '@/lib/api-response'
+         apiNotFound, apiZodError, apiInternalError } from '@/lib/server/api-response'
 import { getItemById, createItem } from '@/services/item.service'
 
 const CreateSchema = z.object({ name: z.string().min(1) })
@@ -613,7 +616,7 @@ export async function POST(request: NextRequest) {
 
 ```typescript
 // services/item.service.ts  — SERVICE example
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/server/prisma'
 
 export interface ItemData {
   id: string; name: string; createdAt: Date
@@ -639,7 +642,7 @@ export async function createItem(data: { name: string }): Promise<ItemData> {
 
 ### Layer 3 — Unit Tests (`services/*.service.test.ts`)
 
-**Setup:** Import `@/tests/prisma-mock` **before** the service. This triggers `vi.mock('@/lib/prisma')` which intercepts every `import { prisma }` in the service.
+**Setup:** Import `@/tests/prisma-mock` **before** the service. This triggers `vi.mock('@/lib/server/prisma')` which intercepts every `import { prisma }` in the service.
 
 **Pattern for every test file:**
 ```typescript

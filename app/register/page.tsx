@@ -27,7 +27,7 @@ import {
   Phone,
 } from "lucide-react";
 import { toast } from "sonner";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/client/auth-client";
 
 interface BetterAuthSignUpData {
   email: string;

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useSession, authClient } from "@/lib/auth-client";
+import { useSession, authClient } from "@/lib/client/auth-client";
 import { useCallback } from "react";
 
 export interface CurrentUser {

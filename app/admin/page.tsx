@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AdminPage } from '@/components/AdminPage';
 import { AdminSkeleton } from '@/components/AdminPage/AdminSkeleton';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { hasAdminAccess, normalizeRole } from '@/lib/auth-helpers';
+import { hasAdminAccess, normalizeRole } from '@/lib/shared/auth-helpers';
 
 export default function AdminRoute() {
   const router = useRouter();

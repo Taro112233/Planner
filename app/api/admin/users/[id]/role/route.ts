@@ -6,8 +6,8 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
-import { hasAdminAccess, normalizeRole } from '@/lib/auth-helpers';
+import { auth } from '@/lib/server/auth';
+import { hasAdminAccess, normalizeRole } from '@/lib/shared/auth-helpers';
 import {
   apiSuccess,
   apiUnauthorized,
@@ -16,7 +16,7 @@ import {
   apiBadRequest,
   apiZodError,
   apiInternalError,
-} from '@/lib/api-response';
+} from '@/lib/server/api-response';
 import { updateUserRole } from '@/services/user.service';
 import type { UserRole } from '@prisma/client';
 

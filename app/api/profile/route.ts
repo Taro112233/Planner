@@ -6,7 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/server/auth';
 import {
   apiSuccess,
   apiUnauthorized,
@@ -14,7 +14,7 @@ import {
   apiNotFound,
   apiZodError,
   apiInternalError,
-} from '@/lib/api-response';
+} from '@/lib/server/api-response';
 import {
   getProfileById,
   updateProfile,

@@ -25,7 +25,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { toast } from "sonner";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/client/auth-client";
 
 // Google Icon Component
 function GoogleIcon({ className }: { className?: string }) {

@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { motion, HTMLMotionProps } from "motion/react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/client/utils"
 
 export interface SwitchProps extends Omit<HTMLMotionProps<"button">, "type"> {
   checked?: boolean

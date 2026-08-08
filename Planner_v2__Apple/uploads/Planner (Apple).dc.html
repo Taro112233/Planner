@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#d7d7db;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:#1d1d1f}
+a{color:#007aff}a:hover{color:#0062cc}
+.ap-scroll::-webkit-scrollbar{width:7px;height:7px}
+.ap-scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:4px}
+.ap-scroll::-webkit-scrollbar-track{background:transparent}
+.ap-card{transition:box-shadow .16s ease,transform .16s ease;cursor:grab}
+.ap-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.13);transform:translateY(-1px)}
+.ap-card:active{cursor:grabbing}
+.ap-chk{width:19px;height:19px;border-radius:50%;border:1.6px solid #c7c7cc;flex:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,border-color .15s;background:#fff}
+.ap-chk:hover{border-color:#007aff}
+.ap-chk.on{background:#007aff;border-color:#007aff}
+.ap-chk.on::after{content:"";width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translateY(-1px)}
+.ap-sub{display:flex;align-items:center;gap:9px;padding:4px 0;font-size:13px;line-height:1.3;border-radius:6px}
+.ap-sub:hover{background:rgba(0,0,0,.03)}
+.seg{display:inline-flex;background:#e6e6e9;border-radius:9px;padding:2px}
+.seg-opt{padding:5px 15px;border-radius:7px;font-size:13px;color:#1d1d1f;cursor:pointer;transition:.14s;white-space:nowrap}
+.seg-opt.on{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.14);font-weight:590}
+.nav-row{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;color:#1d1d1f}
+.nav-row:hover{background:rgba(0,0,0,.05)}
+.nav-row.on{background:rgba(0,0,0,.08)}
+.tbtn{width:30px;height:30px;border-radius:8px;border:none;background:transparent;color:#636366;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.tbtn:hover{background:rgba(0,0,0,.06)}
+.addbtn{border:none;background:transparent;color:#86868b;font-size:13px;cursor:pointer;padding:7px 8px;border-radius:8px;text-align:left;width:100%}
+.addbtn:hover{background:rgba(0,0,0,.04);color:#1d1d1f}
+@keyframes panelIn{from{transform:translateX(14px);opacity:0}to{transform:translateX(0);opacity:1}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:34px 20px">
+<div style="width:1200px;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 30px 70px rgba(0,0,0,.28),0 6px 18px rgba(0,0,0,.14)">
+
+  <div style="height:44px;display:flex;align-items:center;gap:9px;padding:0 16px;background:#f6f6f7;border-bottom:1px solid rgba(0,0,0,.08);position:relative">
+    <div style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></div>
+    <div style="width:12px;height:12px;border-radius:50%;background:#febc2e"></div>
+    <div style="width:12px;height:12px;border-radius:50%;background:#28c840"></div>
+    <div style="position:absolute;left:0;right:0;text-align:center;font-size:13px;font-weight:590;color:#3a3a3c;pointer-events:none">TeamPlan — เปิดตัวแคมเปญ</div>
+  </div>
+
+  <div style="display:flex;height:660px">
+    <div style="width:236px;flex:none;background:#f2f2f4;border-right:1px solid rgba(0,0,0,.08);padding:14px 12px;display:flex;flex-direction:column;gap:2px">
+      <div style="position:relative;margin:2px 2px 10px">
+        <div style="background:rgba(0,0,0,.06);border-radius:8px;padding:6px 10px 6px 28px;font-size:13px;color:#86868b">ค้นหา</div>
+        <span style="position:absolute;left:9px;top:6px;color:#86868b;font-size:13px">⌕</span>
+      </div>
+      <div class="nav-row"><span style="width:22px;height:22px;border-radius:6px;background:#007aff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px">⌂</span>หน้าแรก</div>
+      <div class="nav-row"><span style="width:22px;height:22px;border-radius:6px;background:#ff9500;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px">✓</span>งานของฉัน<span style="margin-left:auto;font-size:12px;color:#86868b">6</span></div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:.03em;color:#86868b;text-transform:uppercase;margin:14px 8px 5px">กลุ่มของฉัน</div>
+      <div class="nav-row on"><span style="width:22px;height:22px;border-radius:6px;background:#34c759;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px">◎</span>การตลาด Q3</div>
+      <div class="nav-row"><span style="width:22px;height:22px;border-radius:6px;background:#af52de;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px">◎</span>พัฒนาสินค้า</div>
+      <div class="nav-row"><span style="width:22px;height:22px;border-radius:6px;background:#ff2d55;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px">◎</span>ฝ่ายขาย</div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:.03em;color:#86868b;text-transform:uppercase;margin:14px 8px 5px">แผนงาน</div>
+      <div class="nav-row"><span style="width:9px;height:9px;border-radius:3px;background:#8e8e93;margin:0 6px"></span>เปิดตัวแคมเปญ</div>
+      <div class="nav-row"><span style="width:9px;height:9px;border-radius:3px;background:#8e8e93;margin:0 6px"></span>อีเวนต์กลางปี</div>
+      <div style="flex:1"></div>
+      <button class="addbtn">＋ สร้างกลุ่ม / แผนงาน</button>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px 12px">
+        <div style="min-width:0">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-.01em">เปิดตัวแคมเปญ Q3</div>
+          <div style="font-size:12px;color:#86868b;margin-top:1px">28 งาน · เสร็จแล้ว 12</div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;align-items:center">
+          <span style="width:26px;height:26px;border-radius:50%;background:#e7effc;color:#007aff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1.5px solid #fff">กร</span>
+          <span style="width:26px;height:26px;border-radius:50%;background:#f3e9fb;color:#af52de;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1.5px solid #fff;margin-left:-8px">นภ</span>
+          <span style="width:26px;height:26px;border-radius:50%;background:#e6f6ea;color:#34c759;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1.5px solid #fff;margin-left:-8px">พร</span>
+        </div>
+        <button class="tbtn" style="width:auto;padding:0 10px;gap:6px;background:#007aff;color:#fff;font-weight:590;font-size:13px">＋ งานใหม่</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;padding:0 20px 14px">
+        <div class="seg">
+          <div class="seg-opt {{ vBoard }}" onClick="{{ setBoard }}">บอร์ด</div>
+          <div class="seg-opt {{ vList }}" onClick="{{ setList }}">รายการ</div>
+          <div class="seg-opt {{ vCal }}" onClick="{{ setCal }}">ปฏิทิน</div>
+        </div>
+        <div style="flex:1"></div>
+        <button class="tbtn" style="width:auto;padding:0 11px;gap:6px;font-size:13px;color:#1d1d1f;background:rgba(0,0,0,.05)">⚟ ตัวกรอง</button>
+        <button class="tbtn" style="width:auto;padding:0 11px;gap:6px;font-size:13px;color:#1d1d1f;background:rgba(0,0,0,.05)">↕ จัดเรียง</button>
+      </div>
+
+      <div style="flex:1;display:flex;min-height:0;border-top:1px solid rgba(0,0,0,.07)">
+        <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ true }}">
+        <div class="ap-scroll" style="flex:1;display:flex;gap:16px;padding:18px 20px;overflow-x:auto;overflow-y:hidden;align-items:flex-start;background:#f5f5f7">
+          <sc-for list="{{ cols }}" as="col" hint-placeholder-count="4">
+            <div style="width:262px;flex:none;display:flex;flex-direction:column;max-height:100%" onDragOver="{{ col.dragOver }}" onDrop="{{ col.drop }}">
+              <div style="display:flex;align-items:center;gap:8px;padding:2px 4px 10px">
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ col.dot }}"></span>
+                <span style="font-size:14px;font-weight:640">{{ col.name }}</span>
+                <span style="font-size:12px;color:#86868b;background:rgba(0,0,0,.06);border-radius:20px;padding:1px 8px">{{ col.count }}</span>
+              </div>
+              <div class="ap-scroll" style="display:flex;flex-direction:column;gap:11px;overflow-y:auto;padding:2px 3px 4px">
+                <sc-for list="{{ col.cards }}" as="c" hint-placeholder-count="2">
+                  <div class="ap-card" draggable="true" onDragStart="{{ c.dragStart }}" onClick="{{ c.open }}" style="background:#fff;border-radius:12px;padding:13px;box-shadow:0 1px 3px rgba(0,0,0,.09);display:flex;flex-direction:column;gap:9px">
+                    <div style="display:flex;align-items:center;gap:7px">
+                      <span style="font-size:11px;font-weight:590;padding:2px 9px;border-radius:20px;background:{{ c.tagBg }};color:{{ c.tagFg }}">{{ c.tag }}</span>
+                      <span style="display:flex;align-items:center;gap:4px;margin-left:auto;font-size:11px;color:{{ c.priFg }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ c.priFg }}"></span>{{ c.pri }}</span>
+                    </div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.32;letter-spacing:-.005em">{{ c.title }}</div>
+                    <sc-if value="{{ c.hasSubs }}" hint-placeholder-val="{{ true }}">
+                    <div class="ap-scroll" style="max-height:132px;overflow-y:auto;margin:1px -3px 0;padding:2px 3px" onClick="{{ c.stop }}">
+                      <sc-for list="{{ c.subs }}" as="s" hint-placeholder-count="3">
+                        <div class="ap-sub" style="padding-left:{{ s.pad }}px" onClick="{{ s.toggle }}">
+                          <span class="ap-chk {{ s.on }}"></span>
+                          <span style="flex:1;{{ s.txt }}">{{ s.label }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                    </sc-if>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+                      <div style="flex:1;height:4px;border-radius:3px;background:rgba(0,0,0,.08);overflow:hidden"><div style="height:100%;width:{{ c.pct }}%;background:#007aff;border-radius:3px"></div></div>
+                      <span style="font-size:11px;color:#86868b;white-space:nowrap">{{ c.progText }}</span>
+                      <span style="font-size:11px;color:#86868b;white-space:nowrap">{{ c.due }}</span>
+                      <span style="width:22px;height:22px;border-radius:50%;background:#eef1f5;color:#48484a;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600">{{ c.who }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+                <button class="addbtn" style="text-align:center;color:#86868b">＋ เพิ่มการ์ด</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+        <div class="ap-scroll" style="flex:1;overflow-y:auto;padding:8px 22px 20px;background:#fff">
+          <sc-for list="{{ cols }}" as="col" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:8px;padding:14px 2px 6px;position:sticky;top:0;background:#fff">
+              <span style="width:8px;height:8px;border-radius:50%;background:{{ col.dot }}"></span>
+              <span style="font-size:14px;font-weight:640">{{ col.name }}</span>
+              <span style="font-size:12px;color:#86868b">{{ col.count }}</span>
+            </div>
+            <sc-for list="{{ col.cards }}" as="c" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 6px;border-top:1px solid rgba(0,0,0,.06);cursor:pointer" onClick="{{ c.open }}">
+                <span class="ap-chk {{ c.allOn }}" onClick="{{ c.toggleAll }}"></span>
+                <span style="flex:1;font-size:14px;font-weight:520;{{ c.rowTxt }}">{{ c.title }}</span>
+                <span style="font-size:11px;color:#86868b">{{ c.progText }}</span>
+                <span style="font-size:11px;font-weight:590;padding:2px 9px;border-radius:20px;background:{{ c.tagBg }};color:{{ c.tagFg }}">{{ c.tag }}</span>
+                <span style="font-size:12px;color:#86868b;width:52px;text-align:right">{{ c.due }}</span>
+                <span style="width:22px;height:22px;border-radius:50%;background:#eef1f5;color:#48484a;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600">{{ c.who }}</span>
+              </div>
+            </sc-for>
+          </sc-for>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isCal }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;padding:18px 22px;background:#fff;display:flex;flex-direction:column">
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;flex:1">
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b">21</div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b">22</div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b">23</div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b;display:flex;flex-direction:column;gap:5px">24<span style="font-size:10px;background:#af52de;color:#fff;border-radius:5px;padding:2px 6px">สรุป flow</span></div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b;display:flex;flex-direction:column;gap:5px">25<span style="font-size:10px;background:#007aff;color:#fff;border-radius:5px;padding:2px 6px">โครงสร้าง</span></div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b;display:flex;flex-direction:column;gap:5px">26<span style="font-size:10px;background:#af52de;color:#fff;border-radius:5px;padding:2px 6px">wireframe</span></div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b">27</div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b;display:flex;flex-direction:column;gap:5px">28<span style="font-size:10px;background:#8e8e93;color:#fff;border-radius:5px;padding:2px 6px">requirement</span></div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b">29</div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b;display:flex;flex-direction:column;gap:5px">30<span style="font-size:10px;background:#007aff;color:#fff;border-radius:5px;padding:2px 6px">สิทธิ์</span></div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b">31</div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b">1</div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b">2</div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:9px;padding:7px;font-size:11px;color:#86868b">3</div>
+          </div>
+          <div style="font-size:12px;color:#86868b;margin-top:12px">การ์ดงานวางตามกำหนดส่ง · ลากเพื่อเปลี่ยนวันได้</div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ panelOpen }}" hint-placeholder-val="{{ false }}">
+        <div class="ap-scroll" style="width:366px;flex:none;border-left:1px solid rgba(0,0,0,.09);background:#fff;overflow-y:auto;animation:panelIn .2s ease">
+          <div style="padding:16px 18px;display:flex;flex-direction:column;gap:13px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:#86868b">{{ sel.id }}</span>
+              <div style="flex:1"></div>
+              <button class="tbtn" style="width:26px;height:26px;background:rgba(0,0,0,.05)" onClick="{{ closePanel }}">✕</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px">
+              <span style="font-size:11px;font-weight:590;padding:2px 9px;border-radius:20px;background:{{ sel.tagBg }};color:{{ sel.tagFg }}">{{ sel.tag }}</span>
+              <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:{{ sel.priFg }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ sel.priFg }}"></span>{{ sel.pri }}</span>
+            </div>
+            <div style="font-size:19px;font-weight:700;line-height:1.3;letter-spacing:-.01em">{{ sel.title }}</div>
+            <div style="background:#f5f5f7;border-radius:11px;padding:4px 12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.07);font-size:13px"><span style="color:#86868b">สถานะ</span><span style="font-weight:520">{{ sel.status }} ›</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.07);font-size:13px"><span style="color:#86868b">ผู้รับผิดชอบ</span><span style="width:22px;height:22px;border-radius:50%;background:#eef1f5;color:#48484a;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600">{{ sel.who }}</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:#86868b">กำหนดส่ง</span><span style="font-weight:520">{{ sel.due }}</span></div>
+            </div>
+            <div style="font-size:13px;color:#48484a;line-height:1.5">คลิกเพื่อพิมพ์รายละเอียด แนบไฟล์ รูปภาพ หรือลิงก์ได้</div>
+            <div style="border:1.4px dashed rgba(0,0,0,.16);border-radius:10px;height:78px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#a1a1a6">รูปภาพ / ไฟล์แนบ</div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:12px;font-weight:640;color:#48484a">งานย่อย (ซ้อนได้ไม่จำกัด)</span>
+              <span style="font-size:12px;color:#007aff">{{ sel.progText }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <sc-for list="{{ sel.subs }}" as="s" hint-placeholder-count="4">
+                <div class="ap-sub" style="padding-left:{{ s.pad }}px" onClick="{{ s.toggle }}"><span class="ap-chk {{ s.on }}"></span><span style="flex:1;font-size:13.5px;{{ s.txt }}">{{ s.label }}</span></div>
+              </sc-for>
+              <div class="ap-sub" style="color:#a1a1a6"><span class="ap-chk" style="border-style:dashed"></span><span style="font-size:13.5px">เพิ่มงานย่อย</span></div>
+            </div>
+            <div style="font-size:12px;font-weight:640;color:#48484a;margin-top:2px">กิจกรรม (audit)</div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <div style="display:flex;gap:9px;align-items:center;font-size:12px;color:#636366"><span style="width:22px;height:22px;border-radius:50%;background:#e6f6ea;color:#34c759;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">พร</span>ย้ายไป “กำลังทำ” · 2 ชม.ที่แล้ว</div>
+              <div style="display:flex;gap:9px;align-items:center;font-size:12px;color:#636366"><span style="width:22px;height:22px;border-radius:50%;background:#e7effc;color:#007aff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">กร</span>มอบหมายให้ พร · เมื่อวาน</div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    const S=(id,label,depth,done)=>({id,label,depth:depth||0,done:!!done});
+    const card=(id,title,tag,pri,who,due,subs)=>({id,title,tag,pri,who,due,subs});
+    this.state = {
+      view:'board', panelOpen:false, activeId:'T-102', drag:null,
+      columns:[
+        {id:'todo',name:'ต้องทำ',dot:'#8e8e93',cards:[
+          card('T-110','เตรียมสื่อแคมเปญครบชุด','ดีไซน์','สูง','พร','2 ส.ค.',[
+            S('g1','งานโซเชียล',0),S('g1a','Facebook',1),S('g1b','Instagram',1),S('g1c','TikTok',1),S('g1d','LINE OA',1),
+            S('g2','งานวิดีโอ',0),S('g2a','เขียนสคริปต์',1),S('g2b','สตอรีบอร์ด',1),S('g2c','ถ่ายทำ',1),S('g2d','ตัดต่อ',1),
+            S('g3','งานสิ่งพิมพ์',0),S('g3a','โปสเตอร์',1),S('g3b','ใบปลิว',1),S('g3c','ป้ายหน้าร้าน',1),
+            S('g4','อีเมล & แลนดิ้ง',0),S('g4a','เขียน copy',1),S('g4b','ทำหน้า landing',1),S('g4c','ตั้ง tracking',1),
+            S('g5','ตรวจแบรนด์ไกด์',0)]),
+          card('T-111','จองพื้นที่โฆษณา','วางแผน','กลาง','นภ','5 ส.ค.',[
+            S('h1','เลือกช่องทาง',0),S('h2','ต่อรองราคา',0),S('h3','ยืนยันสัญญา',0)]),
+          card('T-101','ตั้งค่าโครงสร้างกลุ่มงาน','วางแผน','สูง','กร','25 ก.ค.',[
+            S('a1','กำหนดหัวข้อใหญ่',0),S('a1a','การตลาด',1),S('a1b','คอนเทนต์',1),S('a2','ตั้งสิทธิ์เริ่มต้น',0)]),
+          card('T-105','เก็บ requirement จากฝ่ายขาย','วิจัย','กลาง','นภ','28 ก.ค.',[
+            S('b1','สัมภาษณ์ผู้ใช้ 5 คน',0),S('b2','สรุปประเด็น',0)]),
+        ]},
+        {id:'doing',name:'กำลังทำ',dot:'#007aff',cards:[
+          card('T-102','ออกแบบ wireframe หน้าหลัก','ดีไซน์','สูง','พร','26 ก.ค.',[
+            S('c1','ร่างหน้าบอร์ด',0,true),S('c1a','คอลัมน์สถานะ',1,true),S('c1b','การ์ดงาน',1,true),S('c1c','แถบเครื่องมือ',1),
+            S('c2','ทำ prototype',0),S('c2a','เชื่อมหน้าจอ',1),S('c2b','ใส่ transition',1),
+            S('c3','ทำ panel รายละเอียด',0),S('c3a','ฟิลด์สถานะ',1),S('c3b','checklist',1),
+            S('c4','รีวิวกับทีม',0),S('c5','แก้ตามฟีดแบ็ก',0),S('c6','ส่งมอบ handoff',0)]),
+          card('T-108','ร่างระบบสิทธิ์ผู้ใช้','วางแผน','กลาง','กร','30 ก.ค.',[
+            S('d1','กำหนด role',0),S('d2','ทำ flow อนุมัติ',0)]),
+          card('T-112','พัฒนาระบบแจ้งเตือน','ดีไซน์','กลาง','พร','1 ส.ค.',[
+            S('i1','ออกแบบ toast',0,true),S('i2','เชื่อม backend',0),S('i3','ทดสอบ',0)]),
+          card('T-117','ทำ dashboard สรุป','ดีไซน์','ต่ำ','นภ','4 ส.ค.',[
+            S('j1','เลือก metric',0,true),S('j2','วางเลย์เอาต์',0),S('j3','ต่อข้อมูลจริง',0)]),
+        ]},
+        {id:'review',name:'รอตรวจ',dot:'#ff9500',cards:[
+          card('T-103','สรุป user flow','วิจัย','ต่ำ','นภ','24 ก.ค.',[
+            S('e1','เขียน user story',0,true),S('e2','ตรวจทาน',0,true)]),
+          card('T-113','รีวิวข้อความแคมเปญ','ทั่วไป','กลาง','กร','23 ก.ค.',[
+            S('k1','ตรวจโทนภาษา',0,true),S('k2','เช็คคำผิด',0)]),
+          card('T-114','ตรวจสิทธิ์เข้าถึงกลุ่ม','วางแผน','สูง','กร','24 ก.ค.',[
+            S('l1','ตรวจ role แอดมิน',0),S('l2','ตรวจสมาชิกใหม่',0)]),
+        ]},
+        {id:'done',name:'เสร็จ',dot:'#34c759',cards:[
+          card('T-104','คิกออฟมีตติ้ง','ทั่วไป','กลาง','กร','19 ก.ค.',[S('f1','นัดหมายทีม',0,true)]),
+          card('T-115','ตั้งชื่อโปรเจกต์','ทั่วไป','ต่ำ','พร','18 ก.ค.',[S('m1','โหวตชื่อ',0,true),S('m2','สรุปชื่อ',0,true)]),
+          card('T-116','ตั้งค่า workspace','วางแผน','ต่ำ','กร','17 ก.ค.',[S('n1','สร้างกลุ่ม',0,true),S('n2','เชิญสมาชิก',0,true)]),
+        ]},
+      ],
+    };
+    this.tagStyle={
+      'วางแผน':['#e7effc','#007aff'],'วิจัย':['#eeeef0','#636366'],
+      'ดีไซน์':['#f3e9fb','#af52de'],'ทั่วไป':['#e6f6ea','#34c759'],
+    };
+    this.priStyle={'สูง':'#ff3b30','กลาง':'#ff9500','ต่ำ':'#8e8e93'};
+    this.statusOf={todo:'ต้องทำ',doing:'กำลังทำ',review:'รอตรวจ',done:'เสร็จ'};
+  }
+  cloneCols(){ return this.state.columns.map(c=>({...c,cards:c.cards.map(cd=>({...cd,subs:cd.subs.map(s=>({...s}))}))})); }
+  findCard(cols,id){ let r=null,col=null; cols.forEach(c=>c.cards.forEach(cd=>{if(cd.id===id){r=cd;col=c;}})); return {card:r,col}; }
+  doMove(toCol){
+    this.setState(s=>{
+      const d=s.drag; if(!d||d.from===toCol) return {drag:null};
+      const cols=this.cloneCols();
+      const from=cols.find(c=>c.id===d.from), to=cols.find(c=>c.id===toCol);
+      const i=from.cards.findIndex(k=>k.id===d.id); if(i<0) return {drag:null};
+      to.cards.push(from.cards.splice(i,1)[0]);
+      return {columns:cols,drag:null};
+    });
+  }
+  recompute(subs){
+    const kids=p=>subs.filter(x=>x.parent===undefined?false:false); // depth-based below
+  }
+  toggleSub(cardId,subId){
+    this.setState(s=>{
+      const cols=this.cloneCols();
+      const {card}=this.findCard(cols,cardId); if(!card) return {};
+      const subs=card.subs;
+      const idx=subs.findIndex(x=>x.id===subId); if(idx<0) return {};
+      const val=!subs[idx].done;
+      // children = following rows with greater depth until depth<=current
+      const base=subs[idx].depth;
+      subs[idx].done=val;
+      for(let j=idx+1;j<subs.length && subs[j].depth>base;j++){ subs[j].done=val; }
+      // recompute parents: a row with children reflects all-children-done
+      for(let j=subs.length-1;j>=0;j--){
+        const d=subs[j].depth, kids=[];
+        for(let k=j+1;k<subs.length && subs[k].depth>d;k++){ if(subs[k].depth===d+1) kids.push(subs[k]); }
+        if(kids.length) subs[j].done=kids.every(x=>x.done);
+      }
+      return {columns:cols};
+    });
+  }
+  toggleAll(cardId){
+    this.setState(s=>{
+      const cols=this.cloneCols();
+      const {card}=this.findCard(cols,cardId); if(!card) return {};
+      const done=card.subs.length && card.subs.every(x=>x.done);
+      card.subs.forEach(x=>x.done=!done);
+      return {columns:cols};
+    });
+  }
+  mapSub(cardId,s){
+    return {label:s.label,pad:s.depth*22,on:s.done?'on':'',
+      txt:s.done?'color:#a1a1a6;text-decoration:line-through':'',
+      toggle:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.toggleSub(cardId,s.id); }};
+  }
+  mapCard(c){
+    const [tagBg,tagFg]=this.tagStyle[c.tag]||['#eeeef0','#636366'];
+    const total=c.subs.length, done=c.subs.filter(x=>x.done).length;
+    return {...c,tagBg,tagFg,priFg:this.priStyle[c.pri]||'#8e8e93',
+      hasSubs:total>0, pct:total?Math.round(done/total*100):0,
+      progText:done+'/'+total,
+      allOn:total&&done===total?'on':'',
+      rowTxt:total&&done===total?'color:#a1a1a6;text-decoration:line-through':'',
+      subs:c.subs.map(s=>this.mapSub(c.id,s)),
+      open:()=>this.setState({panelOpen:true,activeId:c.id}),
+      stop:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); },
+      toggleAll:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.toggleAll(c.id); },
+      dragStart:(e)=>{ this.setState({drag:{id:c.id,from:this._colOf(c.id)}}); if(e&&e.dataTransfer)e.dataTransfer.effectAllowed='move'; },
+    };
+  }
+  _colOf(id){ let r=null; this.state.columns.forEach(c=>c.cards.forEach(cd=>{if(cd.id===id)r=c.id;})); return r; }
+  renderVals(){
+    const S=this.state;
+    const cols=S.columns.map(c=>({
+      id:c.id,name:c.name,dot:c.dot,count:c.cards.length,
+      cards:c.cards.map(cd=>this.mapCard(cd)),
+      dragOver:(e)=>e.preventDefault(),
+      drop:(e)=>{e.preventDefault();this.doMove(c.id);},
+    }));
+    const {card:sc,col:scCol}=this.findCard(S.columns,S.activeId);
+    let sel;
+    if(sc){
+      const [tagBg,tagFg]=this.tagStyle[sc.tag]||['#eeeef0','#636366'];
+      const total=sc.subs.length, done=sc.subs.filter(x=>x.done).length;
+      sel={...sc,tagBg,tagFg,priFg:this.priStyle[sc.pri]||'#8e8e93',
+        status:this.statusOf[scCol?scCol.id:'']||'',
+        progText:done+'/'+total,
+        subs:sc.subs.map(s=>this.mapSub(sc.id,s))};
+    } else {
+      sel={id:'',title:'',tag:'',tagBg:'#eee',tagFg:'#636366',pri:'',priFg:'#8e8e93',status:'',due:'',who:'',progText:'0/0',subs:[]};
+    }
+    return {
+      cols, sel, panelOpen:S.panelOpen,
+      isBoard:S.view==='board', isList:S.view==='list', isCal:S.view==='calendar',
+      vBoard:S.view==='board'?'on':'', vList:S.view==='list'?'on':'', vCal:S.view==='calendar'?'on':'',
+      setBoard:()=>this.setState({view:'board'}), setList:()=>this.setState({view:'list'}), setCal:()=>this.setState({view:'calendar'}),
+      closePanel:()=>this.setState({panelOpen:false}),
+    };
+  }
+}
+</script>
+</body>
+</html>

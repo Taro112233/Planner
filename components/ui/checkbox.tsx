@@ -4,7 +4,7 @@
 import * as React from "react"
 import { motion, HTMLMotionProps } from "motion/react"
 import { Check } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/client/utils"
 
 export interface CheckboxProps extends Omit<HTMLMotionProps<"button">, "type"> {
   checked?: boolean

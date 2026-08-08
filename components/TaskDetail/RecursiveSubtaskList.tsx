@@ -1,12 +1,13 @@
 // components/TaskDetail/RecursiveSubtaskList.tsx
-// Renders a recursive tree of SubtaskProps, with a checkbox per node.
-// Each level is indented by pl-5; max depth is enforced at 10.
+// Renders a recursive tree of SubtaskNodeDto, with a checkbox per node.
+// The schema caps real data at depth 2 (root/child/grandchild); MAX_DEPTH is
+// just a defensive render guard.
 'use client';
 
 import React from 'react';
 import * as Checkbox from '@radix-ui/react-checkbox';
 import { Check, ChevronRight } from 'lucide-react';
-import type { SubtaskProps } from '@/types/planner';
+import type { SubtaskNodeDto } from '@/types/planner';
 
 // ─────────────────────────────────────────────
 // Props
@@ -14,7 +15,7 @@ import type { SubtaskProps } from '@/types/planner';
 
 interface RecursiveSubtaskListProps {
   /** Array of subtask nodes to render at this level */
-  subtasks: SubtaskProps[];
+  subtasks: SubtaskNodeDto[];
   /**
    * Called when the user toggles a checkbox.
    * Bubbles up from any depth — always passes the leaf node's ID.
@@ -66,14 +67,14 @@ export function RecursiveSubtaskList({
 // ─────────────────────────────────────────────
 
 interface SubtaskRowProps {
-  subtask: SubtaskProps;
+  subtask: SubtaskNodeDto;
   onToggle: (subtaskId: string) => void;
   isToggling: boolean;
   depth: number;
 }
 
 function SubtaskRow({ subtask, onToggle, isToggling, depth }: SubtaskRowProps) {
-  const hasChildren = Array.isArray(subtask.children) && subtask.children.length > 0;
+  const hasChildren = subtask.children.length > 0;
 
   return (
     <li className="select-none">
@@ -91,7 +92,7 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth }: SubtaskRowProps) {
         {/* Radix Checkbox */}
         <Checkbox.Root
           id={`subtask-${subtask.id}`}
-          checked={subtask.isCompleted}
+          checked={subtask.isDone}
           onCheckedChange={() => onToggle(subtask.id)}
           disabled={isToggling}
           aria-label={`Toggle subtask: ${subtask.title}`}
@@ -113,7 +114,7 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth }: SubtaskRowProps) {
           htmlFor={`subtask-${subtask.id}`}
           className={[
             'text-sm leading-snug cursor-pointer transition-all duration-150',
-            subtask.isCompleted
+            subtask.isDone
               ? 'line-through text-content-tertiary'
               : 'text-content-primary group-hover:text-content-secondary',
             isToggling ? 'cursor-not-allowed' : 'cursor-pointer',
@@ -126,7 +127,7 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth }: SubtaskRowProps) {
       {/* Recursive children */}
       {hasChildren && depth < MAX_DEPTH && (
         <RecursiveSubtaskList
-          subtasks={subtask.children!}
+          subtasks={subtask.children}
           onToggle={onToggle}
           isToggling={isToggling}
           depth={depth + 1}

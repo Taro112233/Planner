@@ -2,7 +2,7 @@
 // Centralised Prisma mock using vitest-mock-extended.
 //
 // How it works:
-//   1. vi.mock('@/lib/prisma') intercepts every `import { prisma }` in services.
+//   1. vi.mock('@/lib/server/prisma') intercepts every `import { prisma }` in services.
 //   2. mockDeep<PrismaClient>() returns a fully type-safe mock where every
 //      Prisma method (findUnique, update, create, …) is a vi.fn().
 //   3. mockReset(prismaMock) clears call history before each test.
@@ -18,8 +18,8 @@ import { PrismaClient } from '@prisma/client';
 // The typed mock instance — use this in tests to set up return values
 export const prismaMock = mockDeep<PrismaClient>() as DeepMockProxy<PrismaClient>;
 
-// Tell Vitest to replace @/lib/prisma with our mock
-vi.mock('@/lib/prisma', () => ({
+// Tell Vitest to replace @/lib/server/prisma with our mock
+vi.mock('@/lib/server/prisma', () => ({
   prisma: prismaMock,
 }));
 
