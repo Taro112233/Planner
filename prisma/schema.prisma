@@ -1,6 +1,6 @@
 // This file is auto-generated. Do not edit manually.
 // Edit files in prisma/schemas/ directory instead.
-// Last generated: 2026-08-03T16:15:48.526Z
+// Last generated: 2026-08-03T16:21:43.591Z
 
 generator client {
   provider        = "prisma-client-js"
@@ -290,13 +290,6 @@ model Group {
   @@index([organizationId, sortOrder])
   @@map("groups")
 }
-
-// ==========================================
-// SCHEMA SCHEMA
-// ==========================================
-
-// Native multi-file Prisma schema entrypoint.
-// Prisma reads every *.prisma file in this directory via prisma.config.ts.
 
 // ==========================================
 // TASK-ITEM SCHEMA
