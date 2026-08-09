@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/client/utils"
 
 export interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   required?: boolean

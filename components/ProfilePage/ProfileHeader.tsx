@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Camera, Loader2 } from 'lucide-react';
-import { getRoleIcon, getRoleBadgeClasses, getRoleDisplayNameEN } from '@/lib/auth-helpers';
+import { getRoleIcon, getRoleBadgeClasses, getRoleDisplayNameEN } from '@/lib/shared/auth-helpers';
 import type { UserProfile } from '@/types/profile';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/client/utils';
 
 interface ProfileHeaderProps {
   profile: UserProfile;

@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/client/utils"
 
 function Collapsible({
   ...props

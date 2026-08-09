@@ -1,0 +1,84 @@
+// components/PlannerShell/PlannerSidebar.tsx
+// Left nav for the planner app shell. Only "Board" is wired up today — later
+// phases (Home, My Tasks, Inbox, workspace Groups, multiple Plans, Reports,
+// Audit log, Members, Templates, Trash) will add their own nav sections here
+// once those pages exist. No dead links are rendered in the meantime.
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { LayoutGrid, Search } from 'lucide-react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInput,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+
+function initials(firstName: string, lastName: string): string {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
+}
+
+export function PlannerSidebar() {
+  const pathname = usePathname();
+  const { user } = useCurrentUser();
+
+  return (
+    // The desktop rail is `fixed inset-y-0` in the underlying primitive, which
+    // ignores document flow and starts at the viewport's top edge — behind
+    // the global AppHeader's sticky 4rem (h-16) bar. Push it down and shrink
+    // its height to match so it starts cleanly below the header instead of
+    // having its own top content hidden underneath it.
+    <Sidebar collapsible="icon" className="top-16 h-[calc(100svh-4rem)]">
+      <SidebarHeader>
+        <div className="relative px-1 py-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-content-tertiary pointer-events-none" />
+          <SidebarInput placeholder="Search tasks…" className="pl-8" disabled />
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith('/board')} tooltip="Board">
+                  <Link href="/board">
+                    <LayoutGrid />
+                    <span>Board</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        {user && (
+          <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
+            <Avatar size="sm">
+              {user.image && <AvatarImage src={user.image} alt={user.fullName} />}
+              <AvatarFallback className="text-[10px]">
+                {initials(user.firstName, user.lastName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+              <p className="text-xs font-medium text-content-primary truncate">{user.fullName}</p>
+              <p className="text-[10px] text-content-tertiary truncate">{user.role}</p>
+            </div>
+          </div>
+        )}
+      </SidebarFooter>
+    </Sidebar>
+  );
+}

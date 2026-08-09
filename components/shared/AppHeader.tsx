@@ -27,12 +27,13 @@ import {
 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { CompactThemeSelector } from "@/components/theme/CompactThemeSelector";
-import { hasAdminAccess, isSuperAdmin } from "@/lib/auth-helpers";
-import { cn } from "@/lib/utils";
+import { hasAdminAccess, isSuperAdmin } from "@/lib/shared/auth-helpers";
+import { cn } from "@/lib/client/utils";
 
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/dashboard", label: "Dashboard", authRequired: true },
+  { href: "/board", label: "Board", authRequired: true },
 ];
 
 export function AppHeader() {

@@ -9,7 +9,7 @@ import {
   type AccentId,
   type ThemeMode,
   type AccentColor,
-} from "@/lib/theme-manager";
+} from "@/lib/client/theme-manager";
 
 export function useTheme() {
   const [activeAccent, setActiveAccent] = useState<AccentId>("amber");

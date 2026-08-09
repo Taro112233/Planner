@@ -4,7 +4,7 @@
 import * as React from "react"
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
 import { motion } from "motion/react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/client/utils"
 
 export interface RadioGroupProps extends React.ComponentProps<typeof RadioGroupPrimitive.Root> {
   orientation?: "horizontal" | "vertical"

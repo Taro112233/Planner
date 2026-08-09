@@ -23,7 +23,10 @@ model User {
   // Better Auth relations
   sessions      Session[]
   accounts      Account[]
-  
+
+  // Planner relations
+  organizationUsers OrganizationUser[]
+
   @@index([email])
   @@index([role])
   @@map("users")

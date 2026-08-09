@@ -1,6 +1,6 @@
 // This file is auto-generated. Do not edit manually.
 // Edit files in prisma/schemas/ directory instead.
-// Last generated: 2026-07-29T09:39:04.812Z
+// Last generated: 2026-08-09T13:45:42.699Z
 
 generator client {
   provider        = "prisma-client-js"
@@ -103,7 +103,10 @@ model User {
   // Better Auth relations
   sessions      Session[]
   accounts      Account[]
-  
+
+  // Planner relations
+  organizationUsers OrganizationUser[]
+
   @@index([email])
   @@index([role])
   @@map("users")
@@ -166,16 +169,135 @@ enum UserRole {
 }
 
 // ==========================================
+// ORGANIZATION-USER SCHEMA
+// ==========================================
+
+// prisma/schemas/organization-user.prisma
+// Organization-scoped membership and authorization identity.
+// User.role remains the global web-app role; this role applies only in one org.
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum OrganizationUserStatus {
+  ACTIVE
+  SUSPENDED
+  LEFT
+}
+
+model OrganizationUser {
+  id             String @id @default(cuid())
+  organizationId String
+  userId         String
+
+  firstName     String    @default("")          // ✅ Changed to optional
+  lastName      String    @default("")          // ✅ Changed to optional
+  
+  role   OrganizationRole       @default(MEMBER)
+  status OrganizationUserStatus @default(ACTIVE)
+
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Membership is soft-left via status/leftAt so historical relations survive.
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  taskItemsCreated TaskItem[]     @relation("TaskItemCreator")
+  taskAssignments  TaskAssignee[] @relation("TaskAssigneeUser")
+  assignmentsMade  TaskAssignee[] @relation("TaskAssignedBy")
+  subtasksCreated  Subtask[]      @relation("SubtaskCreator")
+  subtasksChecked  Subtask[]      @relation("SubtaskCheckedBy")
+  activities       TaskActivity[] @relation("ActivityActor")
+
+  @@unique([organizationId, userId])
+  // Tenant-safe relation target for task actors and assignees.
+  @@unique([id, organizationId])
+  @@index([userId, status])
+  @@index([organizationId, role, status])
+  @@map("organization_users")
+}
+
+// ==========================================
 // PLANNER SCHEMA
 // ==========================================
 
 // prisma/schemas/planner.prisma
-// Multi-tenant App Planner — domain models.
-// This file is merged into schema.prisma by `pnpm schema:merge`.
+// Multi-tenant Planner — organization and board/group models.
+// Loaded natively with the other fragments in this directory.
 
 // ─────────────────────────────────────────────
-// Enums
+// Organization — top-level multi-tenant boundary
 // ─────────────────────────────────────────────
+
+/**
+ * Each organization is an isolated tenant.
+ * All planner data is scoped to one organization.
+ */
+model Organization {
+  id     String       @id @default(cuid())
+  name   String
+  slug   String       @unique
+  status EntityStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users      OrganizationUser[]
+  groups     Group[]
+  badges     TaskBadge[]
+  activities TaskActivity[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+// ─────────────────────────────────────────────
+// Group — Kanban column / category within an org
+// ─────────────────────────────────────────────
+
+/**
+ * A Group is a Kanban column or logical category within one Organization.
+ * Display and WIP settings are explicit columns rather than duplicated JSON.
+ */
+model Group {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  color       String? // Hex or semantic color token for the column header
+  icon        String? // Lucide/custom icon name
+  wipLimit    Int?
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  taskItems TaskItem[]
+
+  @@unique([organizationId, name])
+  // Composite tenant key used by TaskItem to prevent cross-org relations.
+  @@unique([id, organizationId])
+  @@index([organizationId, sortOrder])
+  @@map("groups")
+}
+
+// ==========================================
+// TASK-ITEM SCHEMA
+// ==========================================
+
+// prisma/schemas/task-item.prisma
+// Current Planner task concept:
+// TaskItem is the assignable card; Subtask is a non-assignable 3-level tree.
 
 enum TaskStatus {
   TODO
@@ -191,143 +313,206 @@ enum TaskPriority {
   URGENT
 }
 
-enum AuditAction {
-  CREATED
-  UPDATED
-  DELETED
-  SUBTASK_TOGGLED
+enum ActivityAction {
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_STATUS_CHANGED
+  TASK_ASSIGNED
+  TASK_UNASSIGNED
+  TASK_MOVED
+  TASK_DELETED
+  SUBTASK_CREATED
+  SUBTASK_RENAMED
+  SUBTASK_CHECKED
+  SUBTASK_UNCHECKED
+  SUBTASK_MOVED
+  SUBTASK_DELETED
 }
 
 // ─────────────────────────────────────────────
-// Organization — top-level multi-tenant boundary
+// TaskItem — assignable Kanban card
 // ─────────────────────────────────────────────
 
-/**
- * Each organization is an isolated tenant.
- * All planner data is scoped to one organization.
- */
-model Organization {
-  id        String       @id @default(cuid())
-  name      String
-  slug      String       @unique
-  status    EntityStatus @default(ACTIVE)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  groups Group[]
-  tasks  Task[]
-  audits Audit[]
-
-  @@index([slug])
-  @@map("organizations")
-}
-
-// ─────────────────────────────────────────────
-// Group — Kanban column / category within an org
-// ─────────────────────────────────────────────
-
-/**
- * A Group is a Kanban column or logical category within one Organization.
- * `attributes` stores GroupAttributes JSON (color, icon, WIP limit, etc.).
- */
-model Group {
-  id             String       @id @default(cuid())
+model TaskItem {
+  id             String @id @default(cuid())
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  name       String
-  color      String? // Optional hex/token for the column header
-  sortOrder  Int     @default(0)
-  /// GroupAttributes JSON: { color?, icon?, wipLimit?, description? }
-  attributes Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  tasks Task[]
-
-  @@unique([organizationId, name])
-  @@index([organizationId, sortOrder])
-  @@map("groups")
-}
-
-// ─────────────────────────────────────────────
-// Task — a work item inside a Group
-// ─────────────────────────────────────────────
-
-/**
- * A Task belongs to one Group (and one Organization).
- *
- * `subtasks` holds a recursive SubtaskProps[] JSON array:
- *   [{ id, title, isCompleted, children?: [...] }, ...]
- *
- * `planDetails` holds PlanDetails JSON:
- *   { estimatedHours?, tags?, attachments?, customFields? }
- */
-model Task {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   groupId        String
-  group          Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   title       String
   description String?
   status      TaskStatus   @default(TODO)
   priority    TaskPriority @default(MEDIUM)
+  position    Decimal      @db.Decimal(20, 10)
 
-  /// Recursive SubtaskProps[] JSON (up to 10 levels in UI)
-  subtasks Json @default("[]")
+  startDate DateTime? @db.Timestamptz(6)
+  dueDate   DateTime? @db.Timestamptz(6)
 
-  /// PlanDetails JSON: { estimatedHours?, tags?, attachments?, customFields? }
-  planDetails Json?
+  // Denormalized counters include root subtasks (depth = 0) only.
+  subtaskTotal Int @default(0)
+  subtaskDone  Int @default(0)
 
-  dueDate    DateTime?
-  assigneeId String? // User.id reference (no FK to keep schema flexible)
   createdById String
+  // Optimistic concurrency token for simultaneous edits to the same card.
+  version     Int    @default(1)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
-  // Relations
-  audits Audit[]
+  group   Group            @relation(fields: [groupId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  creator OrganizationUser @relation("TaskItemCreator", fields: [createdById, organizationId], references: [id, organizationId], onDelete: Restrict)
 
-  @@index([organizationId, groupId])
-  @@index([organizationId, status])
-  @@index([organizationId, createdAt])
-  @@map("tasks")
+  subtasks  Subtask[]
+  assignees TaskAssignee[]
+  badges    TaskItemBadge[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, groupId, status])
+  @@index([organizationId, groupId, position])
+  @@index([organizationId, createdById])
+  @@map("task_items")
 }
 
 // ─────────────────────────────────────────────
-// Audit — append-only action log
+// Subtask — recursive checklist, depth 0..2
 // ─────────────────────────────────────────────
 
-/**
- * Immutable audit trail for every CRUD action on planner entities.
- * `payload` stores a before/after snapshot as arbitrary JSON.
- */
-model Audit {
-  id             String       @id @default(cuid())
+model Subtask {
+  id              String  @id @default(cuid())
+  organizationId  String
+  taskItemId      String
+  parentSubtaskId String?
+
+  title    String
+  isDone   Boolean @default(false)
+  position Decimal @db.Decimal(20, 10)
+
+  /// Root = 0; child = parent.depth + 1; maximum = 2.
+  /// Cross-row depth consistency must be enforced by the DB trigger/service.
+  depth Int @default(0) @db.SmallInt
+
+  // Direct children only; grandchildren are excluded.
+  childTotal Int @default(0)
+  childDone  Int @default(0)
+
+  createdById             String
+  checkedById             String?
+  // Snapshot used for the current checked-state label after a profile rename.
+  checkedByNameSnapshot   String?
+  checkedByAvatarSnapshot String?
+  checkedAt               DateTime? @db.Timestamptz(6)
+
+  // Optimistic concurrency token for simultaneous edits to the same node.
+  version Int @default(1)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  taskItem TaskItem @relation(fields: [taskItemId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  // Composite relation guarantees that parent and child belong to one card.
+  parent   Subtask?  @relation("SubtaskTree", fields: [parentSubtaskId, taskItemId], references: [id, taskItemId], onDelete: Cascade)
+  children Subtask[] @relation("SubtaskTree")
+
+  creator   OrganizationUser  @relation("SubtaskCreator", fields: [createdById, organizationId], references: [id, organizationId], onDelete: Restrict)
+  checkedBy OrganizationUser? @relation("SubtaskCheckedBy", fields: [checkedById, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([id, taskItemId])
+  @@index([taskItemId, parentSubtaskId, position])
+  @@index([organizationId, checkedById, isDone])
+  @@map("subtasks")
+}
+
+// ─────────────────────────────────────────────
+// Task assignment — assignment exists at card level only
+// ─────────────────────────────────────────────
+
+model TaskAssignee {
+  taskItemId         String
+  organizationId     String
+  organizationUserId String
+  assignedById       String
+  assignedAt         DateTime @default(now()) @db.Timestamptz(6)
+
+  taskItem   TaskItem         @relation(fields: [taskItemId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  assignee   OrganizationUser @relation("TaskAssigneeUser", fields: [organizationUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  assignedBy OrganizationUser @relation("TaskAssignedBy", fields: [assignedById, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([taskItemId, organizationUserId])
+  @@index([organizationId, organizationUserId])
+  @@map("task_assignees")
+}
+
+// ─────────────────────────────────────────────
+// Badge — organization-scoped labels attached to TaskItem
+// ─────────────────────────────────────────────
+
+model TaskBadge {
+  id             String  @id @default(cuid())
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  color          String?
+  description    String?
+  isActive       Boolean @default(true)
 
-  /// Optional reference to the task that triggered this audit
-  taskId String?
-  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
-  userId     String      // User.id — intentionally no FK to allow user deletion
-  entityType String      // "task" | "group" | "organization"
-  action     AuditAction
-  /// Before/after snapshot or contextual payload (arbitrary JSON)
-  payload    Json?
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taskItems    TaskItemBadge[]
 
-  createdAt DateTime @default(now())
+  @@unique([organizationId, name])
+  @@unique([id, organizationId])
+  @@index([organizationId, isActive])
+  @@map("task_badges")
+}
 
-  @@index([organizationId, taskId])
-  @@index([organizationId, createdAt])
-  @@index([organizationId, userId])
-  @@map("audits")
+model TaskItemBadge {
+  taskItemId     String
+  badgeId        String
+  organizationId String
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  taskItem TaskItem  @relation(fields: [taskItemId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  badge    TaskBadge @relation(fields: [badgeId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([taskItemId, badgeId])
+  @@index([organizationId, badgeId])
+  @@map("task_item_badges")
+}
+
+// ─────────────────────────────────────────────
+// TaskActivity — append-only event history with actor/target snapshots
+// ─────────────────────────────────────────────
+
+model TaskActivity {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Historical identifiers intentionally have no TaskItem/Subtask FK so the
+  // activity survives deletion of its target.
+  taskItemId String
+  subtaskId  String?
+  batchId    String  @default(cuid())
+
+  actorId             String
+  actorUserIdSnapshot String
+  actorNameSnapshot   String
+  actorAvatarSnapshot String?
+  actorRoleSnapshot   OrganizationRole
+
+  action                ActivityAction
+  taskItemTitleSnapshot String
+  targetTitle           String?
+  /// Expected shape: { before?: {...}, after?: {...}, context?: {...} }
+  changes               Json?          @db.JsonB
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor        OrganizationUser @relation("ActivityActor", fields: [actorId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, taskItemId, createdAt(sort: Desc)])
+  @@index([organizationId, actorId, createdAt(sort: Desc)])
+  @@index([batchId])
+  @@map("task_activities")
 }

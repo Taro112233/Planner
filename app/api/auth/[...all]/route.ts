@@ -1,11 +1,11 @@
 // app/api/auth/[...all]/route.ts
 // NextJS Starter - Better Auth Handler with Arcjet Protection
 
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/server/auth";
 import { toNextJsHandler } from "better-auth/next-js";
-import { arcjetAuth, handleArcjetDecision, getRateLimitInfo, getClientIP } from "@/lib/arcjet-config";
+import { arcjetAuth, handleArcjetDecision, getRateLimitInfo, getClientIP } from "@/lib/server/arcjet-config";
 import { NextRequest, NextResponse } from "next/server";
-import { logSecurityEvent } from "@/lib/security-logger";
+import { logSecurityEvent } from "@/lib/server/security-logger";
 
 const handlers = toNextJsHandler(auth);
 

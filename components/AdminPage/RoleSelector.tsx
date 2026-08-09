@@ -10,8 +10,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { getRoleHierarchy, getRoleBadgeClasses } from '@/lib/auth-helpers';
-import { cn } from '@/lib/utils';
+import { getRoleHierarchy, getRoleBadgeClasses } from '@/lib/shared/auth-helpers';
+import { cn } from '@/lib/client/utils';
 import type { UserRole } from '@prisma/client';
 
 const ALL_ROLES: UserRole[] = ['USER', 'ADMIN', 'SUPERADMIN'];

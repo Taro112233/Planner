@@ -5,15 +5,15 @@
 // 🚫 No prisma.* calls. 🚫 No business logic beyond file-type guard.
 
 import { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth';
-import { validateFile } from '@/lib/file-validation';
+import { auth } from '@/lib/server/auth';
+import { validateFile } from '@/lib/server/file-validation';
 import {
   apiSuccess,
   apiUnauthorized,
   apiBadRequest,
   apiNotFound,
   apiInternalError,
-} from '@/lib/api-response';
+} from '@/lib/server/api-response';
 import { updateAvatar } from '@/services/profile.service';
 
 // ─────────────────────────────────────────────

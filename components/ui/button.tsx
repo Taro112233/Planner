@@ -4,7 +4,7 @@
 import * as React from "react"
 import { motion, HTMLMotionProps } from "motion/react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/client/utils"
 
 const buttonVariants = cva(
   // Base: SF Pro–inspired — medium weight, tight tracking, smooth radius, precise transitions

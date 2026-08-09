@@ -5,14 +5,14 @@
 // 🚫 No prisma.* calls. 🚫 No business logic.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { hasAdminAccess, normalizeRole } from '@/lib/auth-helpers';
-import { parsePaginationParams } from '@/lib/pagination';
+import { auth } from '@/lib/server/auth';
+import { hasAdminAccess, normalizeRole } from '@/lib/shared/auth-helpers';
+import { parsePaginationParams } from '@/lib/server/pagination';
 import {
   apiUnauthorized,
   apiForbidden,
   apiInternalError,
-} from '@/lib/api-response';
+} from '@/lib/server/api-response';
 import { listUsers } from '@/services/user.service';
 import type { UserRole } from '@prisma/client';
 

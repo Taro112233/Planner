@@ -3,3 +3,8 @@
 
 export { TaskDetailModal } from './TaskDetailModal';
 export { RecursiveSubtaskList } from './RecursiveSubtaskList';
+export { StatusChipRow } from './StatusChipRow';
+export { AssigneePicker } from './AssigneePicker';
+export { AddSubtaskForm } from './AddSubtaskForm';
+export { PRIORITY_STYLES } from './priorityStyles';
+export { formatActivity } from './activityFormat';

@@ -1,0 +1,50 @@
+// prisma/schemas/organization-user.prisma
+// Organization-scoped membership and authorization identity.
+// User.role remains the global web-app role; this role applies only in one org.
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum OrganizationUserStatus {
+  ACTIVE
+  SUSPENDED
+  LEFT
+}
+
+model OrganizationUser {
+  id             String @id @default(cuid())
+  organizationId String
+  userId         String
+
+  firstName     String    @default("")          // ✅ Changed to optional
+  lastName      String    @default("")          // ✅ Changed to optional
+  
+  role   OrganizationRole       @default(MEMBER)
+  status OrganizationUserStatus @default(ACTIVE)
+
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Membership is soft-left via status/leftAt so historical relations survive.
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  taskItemsCreated TaskItem[]     @relation("TaskItemCreator")
+  taskAssignments  TaskAssignee[] @relation("TaskAssigneeUser")
+  assignmentsMade  TaskAssignee[] @relation("TaskAssignedBy")
+  subtasksCreated  Subtask[]      @relation("SubtaskCreator")
+  subtasksChecked  Subtask[]      @relation("SubtaskCheckedBy")
+  activities       TaskActivity[] @relation("ActivityActor")
+
+  @@unique([organizationId, userId])
+  // Tenant-safe relation target for task actors and assignees.
+  @@unique([id, organizationId])
+  @@index([userId, status])
+  @@index([organizationId, role, status])
+  @@map("organization_users")
+}

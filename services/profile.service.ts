@@ -7,8 +7,8 @@
 //   🚫 No NextRequest / NextResponse imports
 //   🚫 No HTTP status codes
 
-import { prisma } from '@/lib/prisma';
-import { normalizeRole } from '@/lib/auth-helpers';
+import { prisma } from '@/lib/server/prisma';
+import { normalizeRole } from '@/lib/shared/auth-helpers';
 import type { UserRole } from '@prisma/client';
 
 // ─────────────────────────────────────────────

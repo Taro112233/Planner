@@ -1,31 +1,6 @@
 // prisma/schemas/planner.prisma
-// Multi-tenant App Planner — domain models.
-// This file is merged into schema.prisma by `pnpm schema:merge`.
-
-// ─────────────────────────────────────────────
-// Enums
-// ─────────────────────────────────────────────
-
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  DONE
-  CANCELLED
-}
-
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-enum AuditAction {
-  CREATED
-  UPDATED
-  DELETED
-  SUBTASK_TOGGLED
-}
+// Multi-tenant Planner — organization and board/group models.
+// Loaded natively with the other fragments in this directory.
 
 // ─────────────────────────────────────────────
 // Organization — top-level multi-tenant boundary
@@ -36,18 +11,19 @@ enum AuditAction {
  * All planner data is scoped to one organization.
  */
 model Organization {
-  id        String       @id @default(cuid())
-  name      String
-  slug      String       @unique
-  status    EntityStatus @default(ACTIVE)
+  id     String       @id @default(cuid())
+  name   String
+  slug   String       @unique
+  status EntityStatus @default(ACTIVE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  groups Group[]
-  tasks  Task[]
-  audits Audit[]
+  users      OrganizationUser[]
+  groups     Group[]
+  badges     TaskBadge[]
+  activities TaskActivity[]
 
   @@index([slug])
   @@map("organizations")
@@ -59,104 +35,29 @@ model Organization {
 
 /**
  * A Group is a Kanban column or logical category within one Organization.
- * `attributes` stores GroupAttributes JSON (color, icon, WIP limit, etc.).
+ * Display and WIP settings are explicit columns rather than duplicated JSON.
  */
 model Group {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  name       String
-  color      String? // Optional hex/token for the column header
-  sortOrder  Int     @default(0)
-  /// GroupAttributes JSON: { color?, icon?, wipLimit?, description? }
-  attributes Json?
+  name        String
+  description String?
+  color       String? // Hex or semantic color token for the column header
+  icon        String? // Lucide/custom icon name
+  wipLimit    Int?
+  sortOrder   Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tasks Task[]
+  taskItems TaskItem[]
 
   @@unique([organizationId, name])
+  // Composite tenant key used by TaskItem to prevent cross-org relations.
+  @@unique([id, organizationId])
   @@index([organizationId, sortOrder])
   @@map("groups")
-}
-
-// ─────────────────────────────────────────────
-// Task — a work item inside a Group
-// ─────────────────────────────────────────────
-
-/**
- * A Task belongs to one Group (and one Organization).
- *
- * `subtasks` holds a recursive SubtaskProps[] JSON array:
- *   [{ id, title, isCompleted, children?: [...] }, ...]
- *
- * `planDetails` holds PlanDetails JSON:
- *   { estimatedHours?, tags?, attachments?, customFields? }
- */
-model Task {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  groupId        String
-  group          Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
-
-  title       String
-  description String?
-  status      TaskStatus   @default(TODO)
-  priority    TaskPriority @default(MEDIUM)
-
-  /// Recursive SubtaskProps[] JSON (up to 10 levels in UI)
-  subtasks Json @default("[]")
-
-  /// PlanDetails JSON: { estimatedHours?, tags?, attachments?, customFields? }
-  planDetails Json?
-
-  dueDate    DateTime?
-  assigneeId String? // User.id reference (no FK to keep schema flexible)
-  createdById String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  audits Audit[]
-
-  @@index([organizationId, groupId])
-  @@index([organizationId, status])
-  @@index([organizationId, createdAt])
-  @@map("tasks")
-}
-
-// ─────────────────────────────────────────────
-// Audit — append-only action log
-// ─────────────────────────────────────────────
-
-/**
- * Immutable audit trail for every CRUD action on planner entities.
- * `payload` stores a before/after snapshot as arbitrary JSON.
- */
-model Audit {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  /// Optional reference to the task that triggered this audit
-  taskId String?
-  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
-
-  userId     String      // User.id — intentionally no FK to allow user deletion
-  entityType String      // "task" | "group" | "organization"
-  action     AuditAction
-  /// Before/after snapshot or contextual payload (arbitrary JSON)
-  payload    Json?
-
-  createdAt DateTime @default(now())
-
-  @@index([organizationId, taskId])
-  @@index([organizationId, createdAt])
-  @@index([organizationId, userId])
-  @@map("audits")
 }
