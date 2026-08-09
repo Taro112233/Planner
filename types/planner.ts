@@ -94,6 +94,18 @@ export interface TaskDetailDto extends BoardTaskDto {
 }
 
 // ─────────────────────────────────────────────
+// Groups — GET /api/board/groups
+// ─────────────────────────────────────────────
+
+/** Lightweight column summary for contexts that don't need nested taskItems. */
+export interface GroupSummaryDto {
+  id: string;
+  name: string;
+  color: string | null;
+  sortOrder: number;
+}
+
+// ─────────────────────────────────────────────
 // Organization members — GET /api/board/members
 // ─────────────────────────────────────────────
 

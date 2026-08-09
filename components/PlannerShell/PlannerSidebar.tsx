@@ -33,7 +33,12 @@ export function PlannerSidebar() {
   const { user } = useCurrentUser();
 
   return (
-    <Sidebar collapsible="icon">
+    // The desktop rail is `fixed inset-y-0` in the underlying primitive, which
+    // ignores document flow and starts at the viewport's top edge — behind
+    // the global AppHeader's sticky 4rem (h-16) bar. Push it down and shrink
+    // its height to match so it starts cleanly below the header instead of
+    // having its own top content hidden underneath it.
+    <Sidebar collapsible="icon" className="top-16 h-[calc(100svh-4rem)]">
       <SidebarHeader>
         <div className="relative px-1 py-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-content-tertiary pointer-events-none" />

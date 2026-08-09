@@ -6,21 +6,17 @@
 
 import React, { useEffect, useState, useTransition, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Calendar, Flag, Loader2, AlertCircle, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { X, Calendar, Flag, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { RecursiveSubtaskList } from './RecursiveSubtaskList';
+import { StatusChipRow } from './StatusChipRow';
+import { AssigneePicker } from './AssigneePicker';
+import { AddSubtaskForm } from './AddSubtaskForm';
+import { PRIORITY_STYLES } from './priorityStyles';
+import { formatActivity } from './activityFormat';
 import type { BoardGroupDto, TaskDetailDto } from '@/types/planner';
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.charAt(0) ?? '';
-  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
-  return `${first}${last}`.toUpperCase() || '?';
-}
 
 // ─────────────────────────────────────────────
 // API helpers
@@ -112,17 +108,6 @@ interface TaskDetailModalProps {
 }
 
 // ─────────────────────────────────────────────
-// Priority badge
-// ─────────────────────────────────────────────
-
-const PRIORITY_STYLES: Record<TaskDetailDto['priority'], string> = {
-  LOW: 'bg-surface-tertiary text-content-secondary',
-  MEDIUM: 'bg-surface-warning text-content-warning',
-  HIGH: 'bg-surface-danger-subtle text-content-danger',
-  URGENT: 'bg-surface-danger text-content-inverse',
-};
-
-// ─────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────
 
@@ -138,8 +123,6 @@ export function TaskDetailModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isToggling, startToggle] = useTransition();
   const [isMutating, startMutate] = useTransition();
-  const [addingSubtask, setAddingSubtask] = useState(false);
-  const [subtaskDraft, setSubtaskDraft] = useState('');
   const { members } = useOrganizationMembers();
 
   useEffect(() => {
@@ -214,24 +197,18 @@ export function TaskDetailModal({
   );
 
   const handleAddSubtask = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      const title = subtaskDraft.trim();
-      if (!title) return;
-
+    (title: string) => {
       startMutate(async () => {
         try {
           const updated = await postSubtask(taskId, title);
           setTask(updated);
           onTaskUpdated?.(updated);
-          setSubtaskDraft('');
-          setAddingSubtask(false);
         } catch (err) {
           toast.error(err instanceof Error ? err.message : 'Failed to add subtask');
         }
       });
     },
-    [taskId, subtaskDraft, onTaskUpdated]
+    [taskId, onTaskUpdated]
   );
 
   const totalSubtasks = task ? countSubtasks(task.subtasks) : 0;
@@ -281,6 +258,22 @@ export function TaskDetailModal({
               <X size={18} />
             </button>
           </Dialog.Close>
+
+          {/* Open full page (Phase 2 TaskPage) */}
+          <Link
+            href={`/board/tasks/${taskId}`}
+            aria-label="Open full page"
+            title="Open full page"
+            className={[
+              'absolute top-4 right-14 z-10 rounded-md p-1.5',
+              'text-content-tertiary hover:text-content-primary',
+              'hover:bg-surface-secondary',
+              'transition-colors duration-150',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive-primary',
+            ].join(' ')}
+          >
+            <ExternalLink size={16} />
+          </Link>
 
           {isLoading && (
             <div className="flex-1 flex items-center justify-center">
@@ -350,28 +343,12 @@ export function TaskDetailModal({
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-2">
                       Status
                     </h2>
-                    <div className="flex flex-wrap gap-1.5">
-                      {groups.map((group) => {
-                        const active = group.id === task.groupId;
-                        return (
-                          <button
-                            key={group.id}
-                            type="button"
-                            onClick={() => handleStatusChange(group.id)}
-                            disabled={isMutating}
-                            className={[
-                              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
-                              active
-                                ? 'bg-interactive-primary text-primary-foreground'
-                                : 'bg-surface-secondary text-content-secondary hover:bg-surface-tertiary',
-                              isMutating && 'opacity-60 cursor-not-allowed',
-                            ].join(' ')}
-                          >
-                            {group.name}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <StatusChipRow
+                      groups={groups}
+                      activeGroupId={task.groupId}
+                      onChange={handleStatusChange}
+                      disabled={isMutating}
+                    />
                   </section>
                 )}
 
@@ -398,37 +375,12 @@ export function TaskDetailModal({
                   <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-2">
                     Assignees
                   </h2>
-                  <div className="flex flex-wrap gap-2">
-                    {members.map((member) => {
-                      const assigned = task.assignees.some(
-                        (a) => a.organizationUserId === member.organizationUserId
-                      );
-                      return (
-                        <button
-                          key={member.organizationUserId}
-                          type="button"
-                          onClick={() => handleToggleAssignee(member.organizationUserId, assigned)}
-                          disabled={isMutating}
-                          title={member.name}
-                          className={[
-                            'rounded-full transition-all',
-                            assigned
-                              ? 'ring-2 ring-interactive-primary'
-                              : 'ring-1 ring-border-subtle opacity-50 hover:opacity-100',
-                            isMutating && 'cursor-not-allowed',
-                          ].join(' ')}
-                        >
-                          <Avatar size="sm">
-                            {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
-                            <AvatarFallback className="text-[10px]">{initials(member.name)}</AvatarFallback>
-                          </Avatar>
-                        </button>
-                      );
-                    })}
-                    {members.length === 0 && (
-                      <p className="text-xs text-content-tertiary">No members yet.</p>
-                    )}
-                  </div>
+                  <AssigneePicker
+                    members={members}
+                    assignees={task.assignees}
+                    onToggle={handleToggleAssignee}
+                    disabled={isMutating}
+                  />
                 </section>
 
                 {/* Subtasks */}
@@ -480,31 +432,9 @@ export function TaskDetailModal({
                     <p className="text-sm text-content-tertiary mb-2">No subtasks yet.</p>
                   )}
 
-                  {addingSubtask ? (
-                    <form onSubmit={handleAddSubtask} className="flex items-center gap-2 mt-2">
-                      <Input
-                        autoFocus
-                        value={subtaskDraft}
-                        onChange={(e) => setSubtaskDraft(e.target.value)}
-                        onBlur={() => !subtaskDraft.trim() && setAddingSubtask(false)}
-                        placeholder="Subtask title"
-                        disabled={isMutating}
-                        className="h-8 text-sm"
-                      />
-                      <Button type="submit" size="sm" className="h-8" disabled={isMutating || !subtaskDraft.trim()}>
-                        Add
-                      </Button>
-                    </form>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setAddingSubtask(true)}
-                      className="mt-2 inline-flex items-center gap-1.5 text-sm text-content-tertiary hover:text-content-primary transition-colors"
-                    >
-                      <Plus size={14} />
-                      Add subtask
-                    </button>
-                  )}
+                  <div className="mt-2">
+                    <AddSubtaskForm onSubmit={handleAddSubtask} disabled={isMutating} />
+                  </div>
                 </section>
 
                 {task.activities.length > 0 && (
@@ -545,7 +475,7 @@ export function TaskDetailModal({
 // Utilities
 // ─────────────────────────────────────────────
 
-import type { SubtaskNodeDto, TaskActivityDto } from '@/types/planner';
+import type { SubtaskNodeDto } from '@/types/planner';
 
 function countSubtasks(subtasks: SubtaskNodeDto[]): number {
   return subtasks.reduce((acc, s) => acc + 1 + countSubtasks(s.children), 0);
@@ -553,38 +483,4 @@ function countSubtasks(subtasks: SubtaskNodeDto[]): number {
 
 function countCompleted(subtasks: SubtaskNodeDto[]): number {
   return subtasks.reduce((acc, s) => acc + (s.isDone ? 1 : 0) + countCompleted(s.children), 0);
-}
-
-function formatActivity(activity: TaskActivityDto): string {
-  const target = activity.targetTitle ? ` "${activity.targetTitle}"` : '';
-  switch (activity.action) {
-    case 'TASK_CREATED':
-      return 'created this task';
-    case 'TASK_UPDATED':
-      return 'updated this task';
-    case 'TASK_STATUS_CHANGED':
-      return 'changed the status';
-    case 'TASK_MOVED':
-      return 'moved this task';
-    case 'TASK_ASSIGNED':
-      return 'assigned a member';
-    case 'TASK_UNASSIGNED':
-      return 'unassigned a member';
-    case 'TASK_DELETED':
-      return 'deleted this task';
-    case 'SUBTASK_CREATED':
-      return `added subtask${target}`;
-    case 'SUBTASK_RENAMED':
-      return `renamed a subtask${target}`;
-    case 'SUBTASK_CHECKED':
-      return `checked${target}`;
-    case 'SUBTASK_UNCHECKED':
-      return `unchecked${target}`;
-    case 'SUBTASK_MOVED':
-      return `moved a subtask${target}`;
-    case 'SUBTASK_DELETED':
-      return `deleted a subtask${target}`;
-    default:
-      return activity.action.replace(/_/g, ' ').toLowerCase();
-  }
 }

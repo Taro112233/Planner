@@ -7,14 +7,8 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Calendar, Flag } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PRIORITY_STYLES } from '@/components/TaskDetail/priorityStyles';
 import type { BoardTaskDto } from '@/types/planner';
-
-const PRIORITY_STYLES: Record<BoardTaskDto['priority'], string> = {
-  LOW: 'bg-surface-tertiary text-content-secondary',
-  MEDIUM: 'bg-surface-warning text-content-warning',
-  HIGH: 'bg-surface-danger-subtle text-content-danger',
-  URGENT: 'bg-surface-danger text-content-inverse',
-};
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);

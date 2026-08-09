@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/server/auth';
 import { arcjetAPI, handleArcjetDecision } from '@/lib/server/arcjet-config';
 import {
+  apiSuccess,
   apiCreated,
   apiUnauthorized,
   apiRateLimited,
@@ -18,12 +19,33 @@ import {
   apiInternalError,
 } from '@/lib/server/api-response';
 import { resolveBoardActor } from '@/lib/server/board-actor';
-import { createGroup } from '@/services/board.service';
+import { createGroup, listGroups } from '@/services/board.service';
 
 const CreateGroupSchema = z.object({
   name: z.string().trim().min(1, 'name is required').max(60, 'name is too long'),
   color: z.string().trim().min(1).max(20).optional(),
 });
+
+// GET /api/board/groups — lightweight column list (id/name/color/sortOrder only),
+// for contexts without a full board fetch, e.g. the standalone TaskPage.
+export async function GET(request: NextRequest) {
+  try {
+    const decision = await arcjetAPI.protect(request, { requested: 1 });
+    const arcjetError = handleArcjetDecision(decision);
+    if (arcjetError) return apiRateLimited(arcjetError.error);
+
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user) return apiUnauthorized();
+
+    const { organizationId } = await resolveBoardActor(session.user);
+    const groups = await listGroups(organizationId);
+
+    return apiSuccess(groups);
+  } catch (error) {
+    console.error('[GET /api/board/groups]', error);
+    return apiInternalError();
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {

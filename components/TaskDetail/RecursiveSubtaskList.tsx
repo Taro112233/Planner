@@ -25,6 +25,12 @@ interface RecursiveSubtaskListProps {
   isToggling: boolean;
   /** Current nesting depth — enforced ≤ 10, start at 0 */
   depth?: number;
+  /**
+   * Optional per-row slot (e.g. a rename/delete/add-child action menu),
+   * rendered next to the label. Omit to leave rows exactly as-is — used by
+   * TaskDetailModal, which doesn't pass this prop.
+   */
+  renderNodeExtra?: (subtask: SubtaskNodeDto, depth: number) => React.ReactNode;
 }
 
 const MAX_DEPTH = 10;
@@ -38,6 +44,7 @@ export function RecursiveSubtaskList({
   onToggle,
   isToggling,
   depth = 0,
+  renderNodeExtra,
 }: RecursiveSubtaskListProps) {
   if (!subtasks || subtasks.length === 0) return null;
   if (depth > MAX_DEPTH) return null;
@@ -56,6 +63,7 @@ export function RecursiveSubtaskList({
           onToggle={onToggle}
           isToggling={isToggling}
           depth={depth}
+          renderNodeExtra={renderNodeExtra}
         />
       ))}
     </ul>
@@ -71,9 +79,10 @@ interface SubtaskRowProps {
   onToggle: (subtaskId: string) => void;
   isToggling: boolean;
   depth: number;
+  renderNodeExtra?: (subtask: SubtaskNodeDto, depth: number) => React.ReactNode;
 }
 
-function SubtaskRow({ subtask, onToggle, isToggling, depth }: SubtaskRowProps) {
+function SubtaskRow({ subtask, onToggle, isToggling, depth, renderNodeExtra }: SubtaskRowProps) {
   const hasChildren = subtask.children.length > 0;
 
   return (
@@ -122,6 +131,12 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth }: SubtaskRowProps) {
         >
           {subtask.title}
         </label>
+
+        {renderNodeExtra && (
+          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+            {renderNodeExtra(subtask, depth)}
+          </div>
+        )}
       </div>
 
       {/* Recursive children */}
@@ -131,6 +146,7 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth }: SubtaskRowProps) {
           onToggle={onToggle}
           isToggling={isToggling}
           depth={depth + 1}
+          renderNodeExtra={renderNodeExtra}
         />
       )}
     </li>
