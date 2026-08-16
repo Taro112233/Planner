@@ -5,10 +5,12 @@
 // nested subtask actions, full paginated activity).
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ConfirmDeleteModal } from '@/components/shared';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useBoardGroups } from '@/hooks/useBoardGroups';
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
@@ -42,9 +44,12 @@ export function TaskPage({ taskId }: TaskPageProps) {
     addSubtask,
     renameSubtask,
     deleteSubtask,
+    deleteTask,
   } = useTaskDetail(taskId);
   const { groups } = useBoardGroups();
   const { members } = useOrganizationMembers();
+  const router = useRouter();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (loading) return <TaskPageSkeleton />;
 
@@ -64,12 +69,33 @@ export function TaskPage({ taskId }: TaskPageProps) {
     return ok;
   };
 
+  const handleDelete = async () => {
+    const ok = await deleteTask();
+    if (!ok) {
+      toast.error('Failed to delete task');
+      setShowDeleteConfirm(false);
+      return;
+    }
+    router.push('/board');
+  };
+
   return (
     <div className="min-h-screen bg-surface-primary">
       <TaskPageHeader
         title={task.title}
         disabled={mutating}
         onSave={async (title) => guard('Failed to update title')(await updateTitle(title))}
+        onDeleteClick={() => setShowDeleteConfirm(true)}
+      />
+
+      <ConfirmDeleteModal
+        open={showDeleteConfirm}
+        title="ลบ task นี้?"
+        description={`"${task.title}" จะถูกย้ายไปยังถังขยะ คุณสามารถกู้คืนได้ภายหลังจากหน้าถังขยะ`}
+        confirmLabel="ลบ"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        loading={mutating}
       />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -127,7 +153,9 @@ export function TaskPage({ taskId }: TaskPageProps) {
           subtasks={task.subtasks}
           isToggling={mutating}
           isMutating={mutating}
-          onToggle={async (subtaskId) => guard('Failed to update subtask')(await toggleSubtask(subtaskId))}
+          onToggle={async (subtaskId, desiredIsDone) =>
+            guard('Failed to update subtask')(await toggleSubtask(subtaskId, desiredIsDone))
+          }
           onAddSubtask={async (title, parentSubtaskId) =>
             guard('Failed to add subtask')(await addSubtask(title, parentSubtaskId))
           }

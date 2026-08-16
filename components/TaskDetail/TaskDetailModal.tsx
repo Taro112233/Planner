@@ -10,10 +10,12 @@ import Link from 'next/link';
 import { X, Calendar, Flag, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
+import { ConfirmDeleteModal } from '@/components/shared';
 import { RecursiveSubtaskList } from './RecursiveSubtaskList';
 import { StatusChipRow } from './StatusChipRow';
 import { AssigneePicker } from './AssigneePicker';
 import { AddSubtaskForm } from './AddSubtaskForm';
+import { SubtaskRowMenu } from './SubtaskRowMenu';
 import { PRIORITY_STYLES } from './priorityStyles';
 import { formatActivity } from './activityFormat';
 import type { BoardGroupDto, TaskDetailDto } from '@/types/planner';
@@ -35,22 +37,42 @@ async function fetchTaskDetail(taskId: string): Promise<TaskDetailDto> {
   return readJson(res, 'Failed to load task');
 }
 
-async function patchSubtask(taskId: string, subtaskId: string): Promise<TaskDetailDto> {
+async function patchSubtask(taskId: string, subtaskId: string, desiredIsDone: boolean): Promise<TaskDetailDto> {
   const res = await fetch(`/api/board/tasks/${taskId}/subtasks/${subtaskId}`, {
     method: 'PATCH',
     credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isDone: desiredIsDone }),
   });
   return readJson(res, 'Failed to update subtask');
 }
 
-async function postSubtask(taskId: string, title: string): Promise<TaskDetailDto> {
+async function postSubtask(taskId: string, title: string, parentSubtaskId?: string): Promise<TaskDetailDto> {
   const res = await fetch(`/api/board/tasks/${taskId}/subtasks`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, parentSubtaskId }),
   });
   return readJson(res, 'Failed to add subtask');
+}
+
+async function patchRenameSubtask(taskId: string, subtaskId: string, title: string): Promise<TaskDetailDto> {
+  const res = await fetch(`/api/board/tasks/${taskId}/subtasks/${subtaskId}/rename`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+  return readJson(res, 'Failed to rename subtask');
+}
+
+async function deleteSubtaskApi(taskId: string, subtaskId: string): Promise<TaskDetailDto> {
+  const res = await fetch(`/api/board/tasks/${taskId}/subtasks/${subtaskId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  return readJson(res, 'Failed to delete subtask');
 }
 
 async function postAssignee(taskId: string, organizationUserId: string): Promise<TaskDetailDto> {
@@ -149,10 +171,10 @@ export function TaskDetailModal({
   }, [open, taskId]);
 
   const handleToggle = useCallback(
-    (subtaskId: string) => {
+    (subtaskId: string, desiredIsDone: boolean) => {
       startToggle(async () => {
         try {
-          const updated = await patchSubtask(taskId, subtaskId);
+          const updated = await patchSubtask(taskId, subtaskId, desiredIsDone);
           setTask(updated);
           onTaskUpdated?.(updated);
         } catch (err) {
@@ -197,10 +219,10 @@ export function TaskDetailModal({
   );
 
   const handleAddSubtask = useCallback(
-    (title: string) => {
+    (title: string, parentSubtaskId?: string) => {
       startMutate(async () => {
         try {
-          const updated = await postSubtask(taskId, title);
+          const updated = await postSubtask(taskId, title, parentSubtaskId);
           setTask(updated);
           onTaskUpdated?.(updated);
         } catch (err) {
@@ -210,6 +232,39 @@ export function TaskDetailModal({
     },
     [taskId, onTaskUpdated]
   );
+
+  const handleRenameSubtask = useCallback(
+    (subtaskId: string, title: string) => {
+      startMutate(async () => {
+        try {
+          const updated = await patchRenameSubtask(taskId, subtaskId, title);
+          setTask(updated);
+          onTaskUpdated?.(updated);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to rename subtask');
+        }
+      });
+    },
+    [taskId, onTaskUpdated]
+  );
+
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deletingSubtask, setDeletingSubtask] = useState(false);
+
+  const handleConfirmDeleteSubtask = async () => {
+    if (!deleteTarget) return;
+    setDeletingSubtask(true);
+    try {
+      const updated = await deleteSubtaskApi(taskId, deleteTarget.id);
+      setTask(updated);
+      onTaskUpdated?.(updated);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete subtask');
+    } finally {
+      setDeletingSubtask(false);
+      setDeleteTarget(null);
+    }
+  };
 
   const totalSubtasks = task ? countSubtasks(task.subtasks) : 0;
   const completedSubtasks = task ? countCompleted(task.subtasks) : 0;
@@ -427,13 +482,23 @@ export function TaskDetailModal({
                       onToggle={handleToggle}
                       isToggling={isToggling}
                       depth={0}
+                      renderNodeExtra={(subtask, depth) => (
+                        <SubtaskRowMenu
+                          subtask={subtask}
+                          depth={depth}
+                          disabled={isMutating}
+                          onAddChild={(title) => handleAddSubtask(title, subtask.id)}
+                          onRename={(title) => handleRenameSubtask(subtask.id, title)}
+                          onDeleteRequest={() => setDeleteTarget({ id: subtask.id, title: subtask.title })}
+                        />
+                      )}
                     />
                   ) : (
                     <p className="text-sm text-content-tertiary mb-2">No subtasks yet.</p>
                   )}
 
                   <div className="mt-2">
-                    <AddSubtaskForm onSubmit={handleAddSubtask} disabled={isMutating} />
+                    <AddSubtaskForm onSubmit={(title) => handleAddSubtask(title)} disabled={isMutating} />
                   </div>
                 </section>
 
@@ -463,6 +528,17 @@ export function TaskDetailModal({
                   Last updated {new Date(task.updatedAt).toLocaleString()}
                 </p>
               </div>
+
+              <ConfirmDeleteModal
+                open={!!deleteTarget}
+                title="Delete subtask?"
+                description={
+                  deleteTarget ? `"${deleteTarget.title}" and any of its own subtasks will be removed.` : undefined
+                }
+                onConfirm={handleConfirmDeleteSubtask}
+                onCancel={() => setDeleteTarget(null)}
+                loading={deletingSubtask}
+              />
             </>
           )}
         </Dialog.Content>

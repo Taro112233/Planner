@@ -5,16 +5,18 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { PlannerTopbar } from '@/components/PlannerShell';
+import { Button } from '@/components/ui/button';
 
 interface TaskPageHeaderProps {
   title: string;
   onSave: (title: string) => Promise<boolean>;
+  onDeleteClick: () => void;
   disabled?: boolean;
 }
 
-export function TaskPageHeader({ title, onSave, disabled = false }: TaskPageHeaderProps) {
+export function TaskPageHeader({ title, onSave, onDeleteClick, disabled = false }: TaskPageHeaderProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,7 +52,15 @@ export function TaskPageHeader({ title, onSave, disabled = false }: TaskPageHead
         </Link>
       </div>
 
-      <PlannerTopbar title="Task" />
+      <PlannerTopbar
+        title="Task"
+        action={
+          <Button variant="destructive" size="sm" disabled={disabled} onClick={onDeleteClick}>
+            <Trash2 className="size-3.5" />
+            ลบ
+          </Button>
+        }
+      />
 
       <div className="px-4 sm:px-6 lg:px-8 pb-4">
         {editing ? (

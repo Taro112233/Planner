@@ -21,6 +21,10 @@ export function formatActivity(activity: TaskActivityDto): string {
       return 'unassigned a member';
     case 'TASK_DELETED':
       return 'deleted this task';
+    case 'TASK_RESTORED':
+      return 'restored this task';
+    case 'TASK_PURGED':
+      return 'permanently deleted this task';
     case 'SUBTASK_CREATED':
       return `added subtask${target}`;
     case 'SUBTASK_RENAMED':

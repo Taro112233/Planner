@@ -106,6 +106,20 @@ export interface GroupSummaryDto {
 }
 
 // ─────────────────────────────────────────────
+// Trash — GET /api/board/trash
+// ─────────────────────────────────────────────
+
+/** A soft-deleted TaskItem row, listed in the Trash view. */
+export interface TrashedTaskDto {
+  id: string;
+  title: string;
+  priority: TaskPriority;
+  groupName: string;
+  deletedAt: string;
+  deletedByName: string;
+}
+
+// ─────────────────────────────────────────────
 // Organization members — GET /api/board/members
 // ─────────────────────────────────────────────
 

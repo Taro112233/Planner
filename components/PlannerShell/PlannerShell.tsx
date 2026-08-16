@@ -1,7 +1,7 @@
 // components/PlannerShell/PlannerShell.tsx
 // App shell for planner routes: a collapsible left sidebar plus an inset
-// content area. Sits below the existing global AppHeader (app/layout.tsx) —
-// this is a second, planner-scoped layer of chrome, not a replacement for it.
+// content area. The global AppHeader (app/layout.tsx) hides itself on
+// /board routes, so this is the only chrome rendered there.
 'use client';
 
 import React from 'react';

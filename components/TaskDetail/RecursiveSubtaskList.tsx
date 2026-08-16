@@ -17,10 +17,11 @@ interface RecursiveSubtaskListProps {
   /** Array of subtask nodes to render at this level */
   subtasks: SubtaskNodeDto[];
   /**
-   * Called when the user toggles a checkbox.
-   * Bubbles up from any depth — always passes the leaf node's ID.
+   * Called when the user toggles a checkbox. Bubbles up from any depth —
+   * always passes the leaf node's ID plus the desired next isDone value
+   * (not a blind toggle — see prisma/Instruction-task.md §6).
    */
-  onToggle: (subtaskId: string) => void;
+  onToggle: (subtaskId: string, desiredIsDone: boolean) => void;
   /** Whether a toggle mutation is currently in-flight */
   isToggling: boolean;
   /** Current nesting depth — enforced ≤ 10, start at 0 */
@@ -76,7 +77,7 @@ export function RecursiveSubtaskList({
 
 interface SubtaskRowProps {
   subtask: SubtaskNodeDto;
-  onToggle: (subtaskId: string) => void;
+  onToggle: (subtaskId: string, desiredIsDone: boolean) => void;
   isToggling: boolean;
   depth: number;
   renderNodeExtra?: (subtask: SubtaskNodeDto, depth: number) => React.ReactNode;
@@ -102,7 +103,7 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth, renderNodeExtra }: S
         <Checkbox.Root
           id={`subtask-${subtask.id}`}
           checked={subtask.isDone}
-          onCheckedChange={() => onToggle(subtask.id)}
+          onCheckedChange={() => onToggle(subtask.id, !subtask.isDone)}
           disabled={isToggling}
           aria-label={`Toggle subtask: ${subtask.title}`}
           className={[

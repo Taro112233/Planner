@@ -44,7 +44,8 @@ export function AppHeader() {
   if (
     pathname === "/login" ||
     pathname === "/register" ||
-    pathname === "/not-found"
+    pathname === "/not-found" ||
+    pathname.startsWith("/board")
   ) {
     return null;
   }

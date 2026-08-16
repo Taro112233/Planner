@@ -1,13 +1,15 @@
 // app/api/board/tasks/[taskId]/subtasks/[subtaskId]/route.ts
-// Subtask Toggle Controller — Layer 1 (HTTP only)
+// Subtask Check-State Controller — Layer 1 (HTTP only)
 //
-// PATCH /api/board/tasks/[taskId]/subtasks/[subtaskId] — flip a subtask's
-// isDone state. Replaces the old (schema-mismatched) /api/tasks/[taskId]/subtasks
-// route — organizationId is now resolved server-side instead of trusted from
-// the request body.
+// PATCH /api/board/tasks/[taskId]/subtasks/[subtaskId] — set a subtask's
+// isDone state to an explicit desired value (not a blind toggle — see
+// prisma/Instruction-task.md §6). Replaces the old (schema-mismatched)
+// /api/tasks/[taskId]/subtasks route — organizationId is now resolved
+// server-side instead of trusted from the request body.
 // 🚫 No prisma.* calls. 🚫 No business logic.
 
 import { type NextRequest } from 'next/server';
+import { z } from 'zod';
 import { auth } from '@/lib/server/auth';
 import { arcjetAPI, handleArcjetDecision } from '@/lib/server/arcjet-config';
 import {
@@ -16,10 +18,15 @@ import {
   apiRateLimited,
   apiBadRequest,
   apiNotFound,
+  apiZodError,
   apiInternalError,
 } from '@/lib/server/api-response';
 import { resolveBoardActor } from '@/lib/server/board-actor';
-import { toggleSubtask, deleteSubtask } from '@/services/board.service';
+import { setSubtaskDone, deleteSubtask } from '@/services/board.service';
+
+const SetSubtaskDoneSchema = z.object({
+  isDone: z.boolean(),
+});
 
 export async function PATCH(
   request: NextRequest,
@@ -38,8 +45,12 @@ export async function PATCH(
       return apiBadRequest('taskId and subtaskId path parameters are required');
     }
 
+    const body = await request.json().catch(() => null);
+    const parsed = SetSubtaskDoneSchema.safeParse(body);
+    if (!parsed.success) return apiZodError(parsed.error);
+
     const { organizationId, actor } = await resolveBoardActor(session.user);
-    const task = await toggleSubtask(organizationId, taskId, subtaskId, actor);
+    const task = await setSubtaskDone(organizationId, taskId, subtaskId, parsed.data.isDone, actor);
 
     return apiSuccess(task, 'Subtask updated successfully');
   } catch (error) {

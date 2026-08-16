@@ -24,6 +24,8 @@ enum ActivityAction {
   TASK_UNASSIGNED
   TASK_MOVED
   TASK_DELETED
+  TASK_RESTORED
+  TASK_PURGED
   SUBTASK_CREATED
   SUBTASK_RENAMED
   SUBTASK_CHECKED
@@ -58,11 +60,16 @@ model TaskItem {
   // Optimistic concurrency token for simultaneous edits to the same card.
   version     Int    @default(1)
 
+  // Soft-delete: non-null means the card is in the trash. Cleared on restore.
+  deletedAt   DateTime? @db.Timestamptz(6)
+  deletedById String?
+
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
-  group   Group            @relation(fields: [groupId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  creator OrganizationUser @relation("TaskItemCreator", fields: [createdById, organizationId], references: [id, organizationId], onDelete: Restrict)
+  group     Group             @relation(fields: [groupId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  creator   OrganizationUser  @relation("TaskItemCreator", fields: [createdById, organizationId], references: [id, organizationId], onDelete: Restrict)
+  deletedBy OrganizationUser? @relation("TaskItemDeletedBy", fields: [deletedById, organizationId], references: [id, organizationId], onDelete: Restrict)
 
   subtasks  Subtask[]
   assignees TaskAssignee[]
@@ -72,6 +79,7 @@ model TaskItem {
   @@index([organizationId, groupId, status])
   @@index([organizationId, groupId, position])
   @@index([organizationId, createdById])
+  @@index([organizationId, deletedAt])
   @@map("task_items")
 }
 

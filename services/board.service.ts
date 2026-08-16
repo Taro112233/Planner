@@ -21,6 +21,7 @@ import type {
   SubtaskNodeDto,
   TaskActivityDto,
   TaskDetailDto,
+  TrashedTaskDto,
 } from '@/types/planner';
 
 // ─────────────────────────────────────────────
@@ -188,6 +189,7 @@ export async function getBoard(organizationId: string): Promise<BoardDto> {
       wipLimit: true,
       sortOrder: true,
       taskItems: {
+        where: { deletedAt: null },
         orderBy: { position: 'asc' },
         select: TASK_ITEM_SELECT,
       },
@@ -329,7 +331,7 @@ export async function moveTask(
   actor: ActorInput
 ): Promise<BoardTaskDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskId, organizationId },
+    where: { id: taskId, organizationId, deletedAt: null },
     select: { id: true, title: true },
   });
   if (!task) throw new Error('Task not found');
@@ -388,7 +390,7 @@ export async function updateTaskTitle(
   actor: ActorInput
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskId, organizationId },
+    where: { id: taskId, organizationId, deletedAt: null },
     select: { id: true, title: true },
   });
   if (!task) throw new Error('Task not found');
@@ -428,7 +430,7 @@ export async function updateTaskDescription(
   actor: ActorInput
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskId, organizationId },
+    where: { id: taskId, organizationId, deletedAt: null },
     select: { id: true, title: true, description: true },
   });
   if (!task) throw new Error('Task not found');
@@ -468,7 +470,7 @@ export async function updateTaskPriority(
   actor: ActorInput
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskId, organizationId },
+    where: { id: taskId, organizationId, deletedAt: null },
     select: { id: true, title: true, priority: true },
   });
   if (!task) throw new Error('Task not found');
@@ -508,7 +510,7 @@ export async function updateTaskDates(
   actor: ActorInput
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskId, organizationId },
+    where: { id: taskId, organizationId, deletedAt: null },
     select: { id: true, title: true, startDate: true, dueDate: true },
   });
   if (!task) throw new Error('Task not found');
@@ -553,7 +555,7 @@ export async function getTaskDetail(
   taskId: string
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskId, organizationId },
+    where: { id: taskId, organizationId, deletedAt: null },
     select: TASK_DETAIL_SELECT,
   });
   if (!task) throw new Error('Task not found');
@@ -610,7 +612,7 @@ export async function listTaskActivity(
   page: { skip: number; take: number }
 ): Promise<{ items: TaskActivityDto[]; total: number }> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskItemId, organizationId },
+    where: { id: taskItemId, organizationId, deletedAt: null },
     select: { id: true },
   });
   if (!task) throw new Error('Task not found');
@@ -643,53 +645,64 @@ export async function listTaskActivity(
 // ─────────────────────────────────────────────
 
 /**
+ * Set a subtask's isDone state to an explicit desired value — not a blind
+ * toggle (see prisma/Instruction-task.md §6). The state change itself is an
+ * atomic conditional update (`updateMany` guarded by `isDone: { not: desired
+ * }`): if two concurrent requests both target the same desired state, only
+ * the first to commit actually flips the row and applies the parent/TaskItem
+ * counter delta — the second finds 0 matching rows and becomes a no-op,
+ * instead of double-incrementing the counters.
+ *
  * @throws Error('Task not found')
  * @throws Error('Subtask not found')
  */
-export async function toggleSubtask(
+export async function setSubtaskDone(
   organizationId: string,
   taskItemId: string,
   subtaskId: string,
+  desiredIsDone: boolean,
   actor: ActorInput
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskItemId, organizationId },
+    where: { id: taskItemId, organizationId, deletedAt: null },
     select: { id: true, title: true },
   });
   if (!task) throw new Error('Task not found');
 
   const subtask = await prisma.subtask.findFirst({
     where: { id: subtaskId, taskItemId, organizationId },
-    select: { id: true, isDone: true, depth: true, parentSubtaskId: true },
+    select: { id: true, depth: true, parentSubtaskId: true },
   });
   if (!subtask) throw new Error('Subtask not found');
 
-  const nextIsDone = !subtask.isDone;
-
   await prisma.$transaction(async (tx) => {
-    await tx.subtask.update({
-      where: { id: subtaskId },
+    const result = await tx.subtask.updateMany({
+      where: { id: subtaskId, taskItemId, organizationId, isDone: { not: desiredIsDone } },
       data: {
-        isDone: nextIsDone,
-        checkedById: nextIsDone ? actor.organizationUserId : null,
-        checkedByNameSnapshot: nextIsDone ? actor.name : null,
-        checkedByAvatarSnapshot: nextIsDone ? actor.avatarUrl : null,
-        checkedAt: nextIsDone ? new Date() : null,
+        isDone: desiredIsDone,
+        checkedById: desiredIsDone ? actor.organizationUserId : null,
+        checkedByNameSnapshot: desiredIsDone ? actor.name : null,
+        checkedByAvatarSnapshot: desiredIsDone ? actor.avatarUrl : null,
+        checkedAt: desiredIsDone ? new Date() : null,
         version: { increment: 1 },
       },
     });
 
+    // A concurrent request already applied this exact state — skip the
+    // counter deltas and activity log so they aren't double-applied.
+    if (result.count === 0) return;
+
     if (subtask.parentSubtaskId) {
       await tx.subtask.update({
         where: { id: subtask.parentSubtaskId },
-        data: { childDone: { increment: nextIsDone ? 1 : -1 } },
+        data: { childDone: { increment: desiredIsDone ? 1 : -1 } },
       });
     }
 
     if (subtask.depth === 0) {
       await tx.taskItem.update({
         where: { id: taskItemId },
-        data: { subtaskDone: { increment: nextIsDone ? 1 : -1 } },
+        data: { subtaskDone: { increment: desiredIsDone ? 1 : -1 } },
       });
     }
 
@@ -703,7 +716,7 @@ export async function toggleSubtask(
         actorNameSnapshot: actor.name,
         actorAvatarSnapshot: actor.avatarUrl,
         actorRoleSnapshot: actor.role,
-        action: nextIsDone ? 'SUBTASK_CHECKED' : 'SUBTASK_UNCHECKED',
+        action: desiredIsDone ? 'SUBTASK_CHECKED' : 'SUBTASK_UNCHECKED',
         taskItemTitleSnapshot: task.title,
       },
     });
@@ -727,7 +740,7 @@ export async function assignTask(
   actor: ActorInput
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskId, organizationId },
+    where: { id: taskId, organizationId, deletedAt: null },
     select: { id: true, title: true },
   });
   if (!task) throw new Error('Task not found');
@@ -776,7 +789,7 @@ export async function unassignTask(
   actor: ActorInput
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskId, organizationId },
+    where: { id: taskId, organizationId, deletedAt: null },
     select: { id: true, title: true },
   });
   if (!task) throw new Error('Task not found');
@@ -834,7 +847,7 @@ export async function addSubtask(
   parentSubtaskId?: string
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskItemId, organizationId },
+    where: { id: taskItemId, organizationId, deletedAt: null },
     select: { id: true, title: true },
   });
   if (!task) throw new Error('Task not found');
@@ -939,7 +952,7 @@ export async function renameSubtask(
   actor: ActorInput
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskItemId, organizationId },
+    where: { id: taskItemId, organizationId, deletedAt: null },
     select: { id: true, title: true },
   });
   if (!task) throw new Error('Task not found');
@@ -991,7 +1004,7 @@ export async function deleteSubtask(
   actor: ActorInput
 ): Promise<TaskDetailDto> {
   const task = await prisma.taskItem.findFirst({
-    where: { id: taskItemId, organizationId },
+    where: { id: taskItemId, organizationId, deletedAt: null },
     select: { id: true, title: true },
   });
   if (!task) throw new Error('Task not found');
@@ -1043,4 +1056,159 @@ export async function deleteSubtask(
   });
 
   return getTaskDetail(organizationId, taskItemId);
+}
+
+// ─────────────────────────────────────────────
+// Tasks — trash lifecycle (soft delete, restore, permanent delete)
+// ─────────────────────────────────────────────
+
+/**
+ * Move a task to the trash. It disappears from the board and every
+ * task-mutation endpoint until restored.
+ *
+ * @throws Error('Task not found') — missing, or already in the trash
+ */
+export async function deleteTask(
+  organizationId: string,
+  taskItemId: string,
+  actor: ActorInput
+): Promise<{ id: string }> {
+  const task = await prisma.taskItem.findFirst({
+    where: { id: taskItemId, organizationId, deletedAt: null },
+    select: { id: true, title: true },
+  });
+  if (!task) throw new Error('Task not found');
+
+  await prisma.$transaction(async (tx) => {
+    await tx.taskItem.update({
+      where: { id: taskItemId },
+      data: {
+        deletedAt: new Date(),
+        deletedById: actor.organizationUserId,
+        version: { increment: 1 },
+      },
+    });
+
+    await tx.taskActivity.create({
+      data: {
+        organizationId,
+        taskItemId,
+        actorId: actor.organizationUserId,
+        actorUserIdSnapshot: actor.userId,
+        actorNameSnapshot: actor.name,
+        actorAvatarSnapshot: actor.avatarUrl,
+        actorRoleSnapshot: actor.role,
+        action: 'TASK_DELETED',
+        taskItemTitleSnapshot: task.title,
+      },
+    });
+  });
+
+  return { id: taskItemId };
+}
+
+/**
+ * Restore a task out of the trash.
+ *
+ * @throws Error('Task not found') — missing, or not currently trashed
+ */
+export async function restoreTask(
+  organizationId: string,
+  taskItemId: string,
+  actor: ActorInput
+): Promise<TaskDetailDto> {
+  const task = await prisma.taskItem.findFirst({
+    where: { id: taskItemId, organizationId, deletedAt: { not: null } },
+    select: { id: true, title: true },
+  });
+  if (!task) throw new Error('Task not found');
+
+  await prisma.$transaction(async (tx) => {
+    await tx.taskItem.update({
+      where: { id: taskItemId },
+      data: { deletedAt: null, deletedById: null, version: { increment: 1 } },
+    });
+
+    await tx.taskActivity.create({
+      data: {
+        organizationId,
+        taskItemId,
+        actorId: actor.organizationUserId,
+        actorUserIdSnapshot: actor.userId,
+        actorNameSnapshot: actor.name,
+        actorAvatarSnapshot: actor.avatarUrl,
+        actorRoleSnapshot: actor.role,
+        action: 'TASK_RESTORED',
+        taskItemTitleSnapshot: task.title,
+      },
+    });
+  });
+
+  return getTaskDetail(organizationId, taskItemId);
+}
+
+/**
+ * Permanently delete a task that is already in the trash. Descendants
+ * (`Subtask`, `TaskAssignee`, `TaskItemBadge`) cascade-delete at the DB
+ * level. The `TaskActivity` row for this event is written first, before the
+ * row disappears — activity rows have no FK to TaskItem by design, so the
+ * history survives.
+ *
+ * @throws Error('Task not found') — missing, or not currently trashed
+ */
+export async function permanentlyDeleteTask(
+  organizationId: string,
+  taskItemId: string,
+  actor: ActorInput
+): Promise<{ id: string }> {
+  const task = await prisma.taskItem.findFirst({
+    where: { id: taskItemId, organizationId, deletedAt: { not: null } },
+    select: { id: true, title: true },
+  });
+  if (!task) throw new Error('Task not found');
+
+  await prisma.$transaction(async (tx) => {
+    await tx.taskActivity.create({
+      data: {
+        organizationId,
+        taskItemId,
+        actorId: actor.organizationUserId,
+        actorUserIdSnapshot: actor.userId,
+        actorNameSnapshot: actor.name,
+        actorAvatarSnapshot: actor.avatarUrl,
+        actorRoleSnapshot: actor.role,
+        action: 'TASK_PURGED',
+        taskItemTitleSnapshot: task.title,
+      },
+    });
+
+    await tx.taskItem.delete({ where: { id: taskItemId } });
+  });
+
+  return { id: taskItemId };
+}
+
+/** List every trashed task in the organization, most recently deleted first. */
+export async function listTrashedTasks(organizationId: string): Promise<TrashedTaskDto[]> {
+  const rows = await prisma.taskItem.findMany({
+    where: { organizationId, deletedAt: { not: null } },
+    orderBy: { deletedAt: 'desc' },
+    select: {
+      id: true,
+      title: true,
+      priority: true,
+      deletedAt: true,
+      group: { select: { name: true } },
+      deletedBy: { select: { firstName: true, lastName: true } },
+    },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    priority: row.priority,
+    groupName: row.group.name,
+    deletedAt: row.deletedAt!.toISOString(),
+    deletedByName: row.deletedBy ? `${row.deletedBy.firstName} ${row.deletedBy.lastName}`.trim() : 'Unknown',
+  }));
 }

@@ -23,10 +23,11 @@ export interface UseTaskDetailReturn {
   changeStatus: (groupId: string) => Promise<boolean>;
   assign: (organizationUserId: string) => Promise<boolean>;
   unassign: (organizationUserId: string) => Promise<boolean>;
-  toggleSubtask: (subtaskId: string) => Promise<boolean>;
+  toggleSubtask: (subtaskId: string, desiredIsDone: boolean) => Promise<boolean>;
   addSubtask: (title: string, parentSubtaskId?: string) => Promise<boolean>;
   renameSubtask: (subtaskId: string, title: string) => Promise<boolean>;
   deleteSubtask: (subtaskId: string) => Promise<boolean>;
+  deleteTask: () => Promise<boolean>;
 }
 
 export function useTaskDetail(taskId: string): UseTaskDetailReturn {
@@ -123,7 +124,11 @@ export function useTaskDetail(taskId: string): UseTaskDetailReturn {
   );
 
   const toggleSubtask = useCallback(
-    (subtaskId: string) => run(`/api/board/tasks/${taskId}/subtasks/${subtaskId}`, { method: 'PATCH' }),
+    (subtaskId: string, desiredIsDone: boolean) =>
+      run(`/api/board/tasks/${taskId}/subtasks/${subtaskId}`, {
+        method: 'PATCH',
+        body: { isDone: desiredIsDone },
+      }),
     [run, taskId]
   );
 
@@ -144,6 +149,16 @@ export function useTaskDetail(taskId: string): UseTaskDetailReturn {
     [run, taskId]
   );
 
+  /**
+   * Moves the task to the trash. There's no updated TaskDetailDto to store
+   * afterward (the task is no longer active), so this bypasses `run()` —
+   * the caller is expected to navigate away on success.
+   */
+  const deleteTask = useCallback(async () => {
+    const result = await mutate(`/api/board/tasks/${taskId}`, { method: 'DELETE' });
+    return !!result;
+  }, [mutate, taskId]);
+
   return {
     task,
     loading,
@@ -161,5 +176,6 @@ export function useTaskDetail(taskId: string): UseTaskDetailReturn {
     addSubtask,
     renameSubtask,
     deleteSubtask,
+    deleteTask,
   };
 }

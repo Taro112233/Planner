@@ -1,14 +1,14 @@
 // components/PlannerShell/PlannerSidebar.tsx
-// Left nav for the planner app shell. Only "Board" is wired up today — later
-// phases (Home, My Tasks, Inbox, workspace Groups, multiple Plans, Reports,
-// Audit log, Members, Templates, Trash) will add their own nav sections here
-// once those pages exist. No dead links are rendered in the meantime.
+// Left nav for the planner app shell. "Board" and "Trash" are wired up today
+// — later phases (Home, My Tasks, Inbox, workspace Groups, multiple Plans,
+// Reports, Audit log, Members, Templates) will add their own nav sections
+// here once those pages exist. No dead links are rendered in the meantime.
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Search } from 'lucide-react';
+import { LayoutGrid, Search, Trash2 } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -33,12 +33,9 @@ export function PlannerSidebar() {
   const { user } = useCurrentUser();
 
   return (
-    // The desktop rail is `fixed inset-y-0` in the underlying primitive, which
-    // ignores document flow and starts at the viewport's top edge — behind
-    // the global AppHeader's sticky 4rem (h-16) bar. Push it down and shrink
-    // its height to match so it starts cleanly below the header instead of
-    // having its own top content hidden underneath it.
-    <Sidebar collapsible="icon" className="top-16 h-[calc(100svh-4rem)]">
+    // AppHeader is hidden on /board routes (see components/shared/AppHeader.tsx),
+    // so the rail uses the primitive's default full-height fixed positioning.
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="relative px-1 py-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-content-tertiary pointer-events-none" />
@@ -51,10 +48,22 @@ export function PlannerSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith('/board')} tooltip="Board">
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith('/board') && !pathname.startsWith('/board/trash')}
+                  tooltip="Board"
+                >
                   <Link href="/board">
                     <LayoutGrid />
                     <span>Board</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith('/board/trash')} tooltip="Trash">
+                  <Link href="/board/trash">
+                    <Trash2 />
+                    <span>Trash</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
