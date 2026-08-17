@@ -11,6 +11,12 @@ import { Button } from '@/components/ui/button';
 
 interface AddSubtaskFormProps {
   onSubmit: (title: string) => void;
+  /**
+   * Locks the submit button only — never the input. Callers flip this the
+   * instant a submit starts, and disabling a focused input makes the browser
+   * blur it, which used to trip the onBlur below and collapse the form on
+   * every single submit.
+   */
   disabled?: boolean;
   label?: string;
   placeholder?: string;
@@ -60,7 +66,6 @@ export function AddSubtaskForm({
         onBlur={() => !draft.trim() && setAdding(false)}
         onKeyDown={(e) => e.key === 'Escape' && setAdding(false)}
         placeholder={placeholder}
-        disabled={disabled}
         className="h-8 text-sm"
       />
       <Button type="submit" size="sm" className="h-8" disabled={disabled || !draft.trim()}>

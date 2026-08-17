@@ -2,7 +2,7 @@
 // Full paginated activity history — the slide-over only shows the latest 10.
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDataList } from '@/hooks/useDataList';
@@ -11,19 +11,35 @@ import type { TaskActivityDto } from '@/types/planner';
 
 interface TaskPageActivityProps {
   taskId: string;
+  /**
+   * Bump to pull in activity written by an edit elsewhere on the page
+   * (useTaskDetail's dataVersion). Mutations return only the latest 10
+   * activities, so this list has to refresh itself.
+   */
+  refreshKey?: number;
 }
 
-export function TaskPageActivity({ taskId }: TaskPageActivityProps) {
-  const { items, pagination, loading, filters, setFilters } = useDataList<TaskActivityDto>(
+export function TaskPageActivity({ taskId, refreshKey = 0 }: TaskPageActivityProps) {
+  const { items, pagination, loading, filters, setFilters, refetch } = useDataList<TaskActivityDto>(
     `/api/board/tasks/${taskId}/activity`,
     { page: 1, limit: 20 }
   );
+
+  // useDataList already fetches on mount; only react to later bumps.
+  const lastRefreshKeyRef = useRef(refreshKey);
+  useEffect(() => {
+    if (refreshKey === lastRefreshKeyRef.current) return;
+    lastRefreshKeyRef.current = refreshKey;
+    void refetch();
+  }, [refreshKey, refetch]);
 
   return (
     <section aria-label="Activity">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-3">Activity</h2>
 
-      {loading && (
+      {/* Keep-previous-data: a refresh must not swap the list for a spinner,
+          or the section collapses and the page height jumps on every edit. */}
+      {loading && items.length === 0 && (
         <div className="flex items-center justify-center py-4">
           <Loader2 size={16} className="animate-spin text-content-tertiary" />
         </div>
@@ -33,7 +49,7 @@ export function TaskPageActivity({ taskId }: TaskPageActivityProps) {
         <p className="text-sm text-content-tertiary">No activity yet.</p>
       )}
 
-      {!loading && items.length > 0 && (
+      {items.length > 0 && (
         <div className="flex flex-col gap-3">
           {items.map((activity) => (
             <div key={activity.id} className="text-xs text-content-secondary leading-relaxed">

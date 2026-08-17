@@ -3,7 +3,7 @@
 // columns, and opens the task detail panel on card click.
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -29,9 +29,10 @@ import { BoardCalendarView } from './BoardCalendarView';
 import { BoardTimelineView } from './BoardTimelineView';
 import { NewTaskButton } from './NewTaskButton';
 import { TaskDetailModal } from '@/components/TaskDetail';
+import type { TaskPriority } from '@/types/planner';
 
 export function BoardPage() {
-  const { board, loading, error, refetch, moveTask, addTask, addGroup } = useBoard();
+  const { board, loading, error, moveTask, addTask, addGroup, applyTaskUpdate } = useBoard();
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [view, setView] = useState<BoardViewMode>('board');
@@ -40,9 +41,24 @@ export function BoardPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  if (loading) return <BoardSkeleton />;
+  // A refresh that fails once the board is on screen gets a toast; the Alert
+  // below is reserved for the cold-load failure.
+  const toastedErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!error) {
+      toastedErrorRef.current = null;
+      return;
+    }
+    if (error === toastedErrorRef.current) return;
+    toastedErrorRef.current = error;
+    if (board) toast.error(error);
+  }, [error, board]);
 
-  if (error || !board) {
+  // Cold load only — a background refresh must not unmount the board or the
+  // task panel that may be open on top of it.
+  if (loading && !board) return <BoardSkeleton />;
+
+  if (!board) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Alert variant="destructive">
@@ -94,8 +110,8 @@ export function BoardPage() {
     });
   };
 
-  const handleAddTask = async (groupId: string, title: string) => {
-    const ok = await addTask(groupId, title);
+  const handleAddTask = async (groupId: string, title: string, priority?: TaskPriority) => {
+    const ok = await addTask(groupId, title, priority);
     if (!ok) toast.error('Failed to add task');
   };
 
@@ -155,7 +171,7 @@ export function BoardPage() {
           taskId={openTaskId}
           open={!!openTaskId}
           onOpenChange={(open) => !open && setOpenTaskId(null)}
-          onTaskUpdated={() => refetch()}
+          onTaskUpdated={applyTaskUpdate}
           groups={board.groups}
         />
       )}

@@ -23,6 +23,9 @@ import { createTask } from '@/services/board.service';
 const CreateTaskSchema = z.object({
   groupId: z.string().min(1, 'groupId is required'),
   title: z.string().trim().min(1, 'title is required').max(200, 'title is too long'),
+  // Optional — omitting it falls through to the schema default (MEDIUM), which
+  // is what the column quick-add form does.
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -45,7 +48,13 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return apiZodError(parsed.error);
 
     const { organizationId, actor } = await resolveBoardActor(session.user);
-    const task = await createTask(organizationId, parsed.data.groupId, parsed.data.title, actor);
+    const task = await createTask(
+      organizationId,
+      parsed.data.groupId,
+      parsed.data.title,
+      actor,
+      parsed.data.priority
+    );
 
     return apiCreated(task);
   } catch (error) {

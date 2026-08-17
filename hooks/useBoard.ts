@@ -5,9 +5,15 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation } from '@/hooks/useMutation';
-import type { BoardDto, BoardGroupDto, BoardTaskDto } from '@/types/planner';
+import type {
+  BoardDto,
+  BoardGroupDto,
+  BoardTaskDto,
+  TaskDetailDto,
+  TaskPriority,
+} from '@/types/planner';
 
 export interface UseBoardReturn {
   board: BoardDto | null;
@@ -15,8 +21,11 @@ export interface UseBoardReturn {
   error: string | null;
   refetch: () => Promise<void>;
   moveTask: (taskId: string, groupId: string, targetIndex: number) => Promise<boolean>;
-  addTask: (groupId: string, title: string) => Promise<boolean>;
+  /** `priority` omitted → the server applies the schema default (MEDIUM). */
+  addTask: (groupId: string, title: string, priority?: TaskPriority) => Promise<boolean>;
   addGroup: (name: string, color?: string) => Promise<boolean>;
+  /** Merges a task edited elsewhere (e.g. the detail panel) into board state. */
+  applyTaskUpdate: (task: TaskDetailDto) => void;
 }
 
 export function useBoard(): UseBoardReturn {
@@ -25,9 +34,17 @@ export function useBoard(): UseBoardReturn {
   const [error, setError] = useState<string | null>(null);
   const { mutate } = useMutation();
 
+  const hasLoadedRef = useRef(false);
+  const boardRef = useRef<BoardDto | null>(null);
+  useEffect(() => {
+    boardRef.current = board;
+  }, [board]);
+
   const fetchBoard = useCallback(async () => {
     try {
-      setLoading(true);
+      // Only the cold load swaps in the skeleton. A background refresh keeps
+      // the board (and any open task panel) mounted.
+      if (!hasLoadedRef.current) setLoading(true);
       setError(null);
 
       const response = await fetch('/api/board', { credentials: 'include' });
@@ -38,6 +55,7 @@ export function useBoard(): UseBoardReturn {
       }
 
       setBoard(data.data as BoardDto);
+      hasLoadedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load board');
     } finally {
@@ -95,11 +113,11 @@ export function useBoard(): UseBoardReturn {
   );
 
   const addTask = useCallback(
-    async (groupId: string, title: string) => {
-      const created = await mutate<{ groupId: string; title: string }>('/api/board/tasks', {
-        method: 'POST',
-        body: { groupId, title },
-      });
+    async (groupId: string, title: string, priority?: TaskPriority) => {
+      const created = await mutate<{ groupId: string; title: string; priority?: TaskPriority }>(
+        '/api/board/tasks',
+        { method: 'POST', body: { groupId, title, ...(priority && { priority }) } }
+      );
       if (!created) return false;
 
       setBoard((prev) => {
@@ -134,5 +152,51 @@ export function useBoard(): UseBoardReturn {
     [mutate]
   );
 
-  return { board, loading, error, refetch: fetchBoard, moveTask, addTask, addGroup };
+  /**
+   * Folds a TaskDetailDto returned by a panel mutation back into board state.
+   * Cheaper and far less disruptive than refetching /api/board, which used to
+   * flash the skeleton and remount the very panel that triggered the edit.
+   */
+  const applyTaskUpdate = useCallback(
+    (updated: TaskDetailDto) => {
+      // Board cards are BoardTaskDto — drop the detail-only fields rather than
+      // making every card carry a description, subtask tree and activity log
+      // for the calendar/timeline views to memoize over.
+      const { description: _d, subtasks: _s, activities: _a, ...card } = updated;
+
+      const targetExists = boardRef.current?.groups.some((group) => group.id === card.groupId);
+      if (!targetExists) {
+        // Moved into a column this tab hasn't seen yet — a local patch would
+        // make the card vanish, so fall back to a (silent) refetch.
+        void fetchBoard();
+        return;
+      }
+
+      setBoard((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          groups: prev.groups.map((group) => {
+            const without = group.taskItems.filter((task) => task.id !== card.id);
+
+            if (group.id !== card.groupId) {
+              // Untouched columns keep their identity so views can bail out.
+              return without.length === group.taskItems.length ? group : { ...group, taskItems: without };
+            }
+
+            // `position` is a serialized Decimal using halved gaps (1, 0.5,
+            // 1.5, …) — it must be compared numerically, since as strings
+            // "10" sorts before "9".
+            const taskItems = [...without, card].sort(
+              (a, b) => Number(a.position) - Number(b.position)
+            );
+            return { ...group, taskItems };
+          }),
+        };
+      });
+    },
+    [fetchBoard]
+  );
+
+  return { board, loading, error, refetch: fetchBoard, moveTask, addTask, addGroup, applyTaskUpdate };
 }

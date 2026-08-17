@@ -14,11 +14,12 @@ import { ConfirmDeleteModal } from '@/components/shared';
 import { RecursiveSubtaskList } from './RecursiveSubtaskList';
 import { StatusChipRow } from './StatusChipRow';
 import { AssigneePicker } from './AssigneePicker';
+import { PriorityChipRow } from './PriorityChipRow';
 import { AddSubtaskForm } from './AddSubtaskForm';
 import { SubtaskRowMenu } from './SubtaskRowMenu';
 import { PRIORITY_STYLES } from './priorityStyles';
 import { formatActivity } from './activityFormat';
-import type { BoardGroupDto, TaskDetailDto } from '@/types/planner';
+import type { BoardGroupDto, TaskDetailDto, TaskPriority } from '@/types/planner';
 
 // ─────────────────────────────────────────────
 // API helpers
@@ -96,8 +97,11 @@ async function deleteAssignee(taskId: string, organizationUserId: string): Promi
 }
 
 /**
- * The move endpoint returns a BoardTaskDto (no description/subtasks/activities),
- * so re-fetch the full detail afterwards rather than trusting its response shape.
+ * The move endpoint returns a BoardTaskDto, which the panel could merge over
+ * the task it already holds (TaskDetailDto's keys are a superset — that's what
+ * useTaskDetail does). This re-fetches instead so the panel's inline activity
+ * list picks up the new TASK_MOVED row. It's safe here because only
+ * `isLoading` gates rendering and this path never touches it — no flash.
  */
 async function patchMove(taskId: string, groupId: string): Promise<TaskDetailDto> {
   const res = await fetch(`/api/board/tasks/${taskId}/move`, {
@@ -111,6 +115,17 @@ async function patchMove(taskId: string, groupId: string): Promise<TaskDetailDto
     throw new Error(json.error ?? 'Failed to change status');
   }
   return fetchTaskDetail(taskId);
+}
+
+/** The priority endpoint returns the full TaskDetailDto — no re-fetch needed. */
+async function patchPriority(taskId: string, priority: TaskPriority): Promise<TaskDetailDto> {
+  const res = await fetch(`/api/board/tasks/${taskId}/priority`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ priority }),
+  });
+  return readJson(res, 'Failed to update priority');
 }
 
 // ─────────────────────────────────────────────
@@ -199,6 +214,22 @@ export function TaskDetailModal({
       });
     },
     [taskId, task?.groupId, onTaskUpdated]
+  );
+
+  const handlePriorityChange = useCallback(
+    (priority: TaskPriority) => {
+      if (task?.priority === priority) return;
+      startMutate(async () => {
+        try {
+          const updated = await patchPriority(taskId, priority);
+          setTask(updated);
+          onTaskUpdated?.(updated);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to update priority');
+        }
+      });
+    },
+    [taskId, task?.priority, onTaskUpdated]
   );
 
   const handleToggleAssignee = useCallback(
@@ -406,6 +437,17 @@ export function TaskDetailModal({
                     />
                   </section>
                 )}
+
+                <section aria-label="Priority">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-2">
+                    Priority
+                  </h2>
+                  <PriorityChipRow
+                    value={task.priority}
+                    onChange={handlePriorityChange}
+                    disabled={isMutating}
+                  />
+                </section>
 
                 {task.badges.length > 0 && (
                   <section aria-label="Badges">

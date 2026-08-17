@@ -13,10 +13,19 @@ interface TaskPageHeaderProps {
   title: string;
   onSave: (title: string) => Promise<boolean>;
   onDeleteClick: () => void;
-  disabled?: boolean;
+  /** A title save is in flight. */
+  titlePending?: boolean;
+  /** A delete is in flight. Separate from titlePending — unrelated actions. */
+  deletePending?: boolean;
 }
 
-export function TaskPageHeader({ title, onSave, onDeleteClick, disabled = false }: TaskPageHeaderProps) {
+export function TaskPageHeader({
+  title,
+  onSave,
+  onDeleteClick,
+  titlePending = false,
+  deletePending = false,
+}: TaskPageHeaderProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +64,7 @@ export function TaskPageHeader({ title, onSave, onDeleteClick, disabled = false 
       <PlannerTopbar
         title="Task"
         action={
-          <Button variant="destructive" size="sm" disabled={disabled} onClick={onDeleteClick}>
+          <Button variant="destructive" size="sm" disabled={deletePending} onClick={onDeleteClick}>
             <Trash2 className="size-3.5" />
             ลบ
           </Button>
@@ -78,16 +87,23 @@ export function TaskPageHeader({ title, onSave, onDeleteClick, disabled = false 
                 setEditing(false);
               }
             }}
-            disabled={disabled}
             className="w-full text-2xl font-bold text-content-primary bg-transparent border-b border-interactive-primary outline-none"
           />
         ) : (
+          // `commit` leaves edit mode before awaiting the save, so the input is
+          // already gone by the time titlePending flips — dim the heading
+          // instead of disabling a field that no longer exists.
           <h1
             role="button"
             tabIndex={0}
             onClick={() => setEditing(true)}
             onKeyDown={(e) => e.key === 'Enter' && setEditing(true)}
-            className="text-2xl font-bold text-content-primary cursor-text rounded px-1 -mx-1 hover:bg-surface-secondary"
+            className={[
+              'text-2xl font-bold text-content-primary cursor-text rounded px-1 -mx-1 hover:bg-surface-secondary',
+              titlePending && 'opacity-60',
+            ]
+              .filter(Boolean)
+              .join(' ')}
           >
             {title}
           </h1>

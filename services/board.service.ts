@@ -21,6 +21,7 @@ import type {
   SubtaskNodeDto,
   TaskActivityDto,
   TaskDetailDto,
+  TaskPriority,
   TrashedTaskDto,
 } from '@/types/planner';
 
@@ -263,13 +264,20 @@ export async function listGroups(organizationId: string): Promise<GroupSummaryDt
 // ─────────────────────────────────────────────
 
 /**
+ * Create a card at the end of a column.
+ *
+ * `priority` is optional: omitting it leaves the column out of the insert so
+ * the schema default (MEDIUM) applies, which is what the column quick-add form
+ * relies on. The full "New task" form passes an explicit value.
+ *
  * @throws Error('Group not found')
  */
 export async function createTask(
   organizationId: string,
   groupId: string,
   title: string,
-  actor: ActorInput
+  actor: ActorInput,
+  priority?: TaskPriority
 ): Promise<BoardTaskDto> {
   const group = await prisma.group.findFirst({
     where: { id: groupId, organizationId },
@@ -292,6 +300,8 @@ export async function createTask(
         title,
         position,
         createdById: actor.organizationUserId,
+        // Omitted entirely when undefined so the schema default stands.
+        ...(priority !== undefined && { priority }),
       },
       select: TASK_ITEM_SELECT,
     });
@@ -307,6 +317,7 @@ export async function createTask(
         actorRoleSnapshot: actor.role,
         action: 'TASK_CREATED',
         taskItemTitleSnapshot: title,
+        changes: { priority: created.priority },
       },
     });
 
@@ -342,8 +353,13 @@ export async function moveTask(
   });
   if (!group) throw new Error('Group not found');
 
+  // `deletedAt: null` is load-bearing: trashed cards are invisible on the board,
+  // so including their positions here makes computeInsertPosition pick a value
+  // from a list the user can't see. Column at 1,2,3 with 2 trashed shows [1,3];
+  // dropping at the end would yield (2+3)/2 = 2.5 and the card visibly jumps
+  // back one slot on the next refetch.
   const siblings = await prisma.taskItem.findMany({
-    where: { organizationId, groupId: targetGroupId, id: { not: taskId } },
+    where: { organizationId, groupId: targetGroupId, id: { not: taskId }, deletedAt: null },
     orderBy: { position: 'asc' },
     select: { position: true },
   });

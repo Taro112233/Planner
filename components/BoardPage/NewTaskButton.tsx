@@ -11,17 +11,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { BoardGroupDto } from '@/types/planner';
+import { PriorityChipRow } from '@/components/TaskDetail';
+import type { BoardGroupDto, TaskPriority } from '@/types/planner';
 
 interface NewTaskButtonProps {
   groups: BoardGroupDto[];
-  onAddTask: (groupId: string, title: string) => Promise<void>;
+  onAddTask: (groupId: string, title: string, priority?: TaskPriority) => Promise<void>;
 }
 
 export function NewTaskButton({ groups, onAddTask }: NewTaskButtonProps) {
   const [open, setOpen] = useState(false);
   const [groupId, setGroupId] = useState(groups[0]?.id ?? '');
   const [title, setTitle] = useState('');
+  // null = leave it to the server default (MEDIUM) rather than pre-selecting a
+  // value the user never actually chose.
+  const [priority, setPriority] = useState<TaskPriority | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,8 +35,9 @@ export function NewTaskButton({ groups, onAddTask }: NewTaskButtonProps) {
 
     setSubmitting(true);
     try {
-      await onAddTask(groupId, trimmed);
+      await onAddTask(groupId, trimmed, priority ?? undefined);
       setTitle('');
+      setPriority(null);
       setOpen(false);
     } finally {
       setSubmitting(false);
@@ -70,6 +75,10 @@ export function NewTaskButton({ groups, onAddTask }: NewTaskButtonProps) {
             placeholder="Task title"
             disabled={submitting}
           />
+          <div className="space-y-1.5">
+            <p className="text-xs text-content-tertiary">Priority</p>
+            <PriorityChipRow value={priority} onChange={setPriority} disabled={submitting} />
+          </div>
           <Button type="submit" className="w-full" size="sm" disabled={submitting || !title.trim()}>
             Create
           </Button>

@@ -7,5 +7,6 @@ export { StatusChipRow } from './StatusChipRow';
 export { AssigneePicker } from './AssigneePicker';
 export { AddSubtaskForm } from './AddSubtaskForm';
 export { SubtaskRowMenu } from './SubtaskRowMenu';
+export { PriorityChipRow, PRIORITIES } from './PriorityChipRow';
 export { PRIORITY_STYLES } from './priorityStyles';
 export { formatActivity } from './activityFormat';

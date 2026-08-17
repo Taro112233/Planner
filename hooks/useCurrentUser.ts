@@ -4,7 +4,7 @@
 "use client";
 
 import { useSession, authClient } from "@/lib/client/auth-client";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 export interface CurrentUser {
   id: string;
@@ -37,7 +37,7 @@ export function useCurrentUser(): UseCurrentUserReturn {
   const { data: session, isPending, error, refetch } = useSession();
 
   // Transform session user to CurrentUser type
-  const user: CurrentUser | null = session?.user
+  const sessionUser: CurrentUser | null = session?.user
     ? {
         id: session.user.id,
         email: session.user.email,
@@ -61,6 +61,19 @@ export function useCurrentUser(): UseCurrentUserReturn {
         updatedAt: new Date(session.user.updatedAt).toISOString(),
       }
     : null;
+
+  // Better Auth can briefly report no session data while it revalidates.
+  // Serving the last known user through that window stops consumers from
+  // tearing their whole tree down (and re-running every fetch) on a refresh
+  // that changes nothing. Once `isPending` clears we trust the real value, so
+  // a genuine logout or expiry still resolves to null.
+  const lastUserRef = useRef<CurrentUser | null>(null);
+  if (sessionUser) {
+    lastUserRef.current = sessionUser;
+  } else if (!isPending) {
+    lastUserRef.current = null;
+  }
+  const user = sessionUser ?? (isPending ? lastUserRef.current : null);
 
   const logout = useCallback(async () => {
     try {

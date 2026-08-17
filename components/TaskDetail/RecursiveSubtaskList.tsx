@@ -22,8 +22,12 @@ interface RecursiveSubtaskListProps {
    * (not a blind toggle — see prisma/Instruction-task.md §6).
    */
   onToggle: (subtaskId: string, desiredIsDone: boolean) => void;
-  /** Whether a toggle mutation is currently in-flight */
-  isToggling: boolean;
+  /**
+   * Whether a toggle mutation is in flight. Optional: `onToggle` carries an
+   * explicit desired state, so locking the checkboxes is a choice, not a
+   * correctness requirement — TaskPage leaves them live.
+   */
+  isToggling?: boolean;
   /** Current nesting depth — enforced ≤ 10, start at 0 */
   depth?: number;
   /**
@@ -43,7 +47,7 @@ const MAX_DEPTH = 10;
 export function RecursiveSubtaskList({
   subtasks,
   onToggle,
-  isToggling,
+  isToggling = false,
   depth = 0,
   renderNodeExtra,
 }: RecursiveSubtaskListProps) {

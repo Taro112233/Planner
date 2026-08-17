@@ -11,8 +11,12 @@ import type { SubtaskNodeDto } from '@/types/planner';
 
 interface TaskPageSubtasksProps {
   subtasks: SubtaskNodeDto[];
-  isToggling: boolean;
-  isMutating: boolean;
+  /**
+   * A subtask mutation is in flight. Gates the per-row action menu only —
+   * checkboxes stay live because `onToggle` sends an explicit desired state
+   * (not a blind toggle), so rapid or out-of-order clicks converge.
+   */
+  menuPending?: boolean;
   onToggle: (subtaskId: string, desiredIsDone: boolean) => void;
   onAddSubtask: (title: string, parentSubtaskId?: string) => Promise<boolean>;
   onRenameSubtask: (subtaskId: string, title: string) => Promise<boolean>;
@@ -21,8 +25,7 @@ interface TaskPageSubtasksProps {
 
 export function TaskPageSubtasks({
   subtasks,
-  isToggling,
-  isMutating,
+  menuPending = false,
   onToggle,
   onAddSubtask,
   onRenameSubtask,
@@ -47,12 +50,11 @@ export function TaskPageSubtasks({
         <RecursiveSubtaskList
           subtasks={subtasks}
           onToggle={onToggle}
-          isToggling={isToggling}
           renderNodeExtra={(subtask, depth) => (
             <SubtaskRowMenu
               subtask={subtask}
               depth={depth}
-              disabled={isMutating}
+              disabled={menuPending}
               onAddChild={(title) => onAddSubtask(title, subtask.id)}
               onRename={(title) => onRenameSubtask(subtask.id, title)}
               onDeleteRequest={() => setDeleteTarget({ id: subtask.id, title: subtask.title })}
@@ -64,7 +66,9 @@ export function TaskPageSubtasks({
       )}
 
       <div className="mt-2">
-        <AddSubtaskForm onSubmit={(title) => onAddSubtask(title)} disabled={isMutating} />
+        {/* No `disabled` here on purpose — see AddSubtaskForm: a flag that
+            flips during submit blurs the input and collapses the form. */}
+        <AddSubtaskForm onSubmit={(title) => onAddSubtask(title)} />
       </div>
 
       <ConfirmDeleteModal
