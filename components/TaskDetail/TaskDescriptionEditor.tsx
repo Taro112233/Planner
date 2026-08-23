@@ -1,4 +1,4 @@
-// components/TaskPage/TaskPageDescription.tsx
+// components/TaskDetail/TaskDescriptionEditor.tsx
 // Textarea + explicit Save button (no autosave-per-keystroke).
 'use client';
 
@@ -6,14 +6,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 
-interface TaskPageDescriptionProps {
+interface TaskDescriptionEditorProps {
   description: string | null;
   onSave: (description: string | null) => Promise<boolean>;
   /** A description save is in flight. */
   saving?: boolean;
 }
 
-export function TaskPageDescription({ description, onSave, saving = false }: TaskPageDescriptionProps) {
+export function TaskDescriptionEditor({ description, onSave, saving = false }: TaskDescriptionEditorProps) {
   const [draft, setDraft] = useState(description ?? '');
   const dirtyRef = useRef(false);
 
@@ -22,7 +22,7 @@ export function TaskPageDescription({ description, onSave, saving = false }: Tas
 
   useEffect(() => {
     // Adopt the server's value only when the user has nothing unsaved — the
-    // same rule TaskPageHeader applies to the title. Without the guard a save
+    // same rule InlineTextEditor applies to the title. Without the guard a save
     // that trims whitespace, or a change made in another tab, would silently
     // overwrite what's being typed.
     if (!dirtyRef.current) setDraft(description ?? '');

@@ -8,14 +8,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { Calendar, Flag } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PRIORITY_STYLES } from '@/components/TaskDetail/priorityStyles';
+import { initials } from '@/components/TaskDetail/subtaskAttribution';
 import type { BoardTaskDto } from '@/types/planner';
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.charAt(0) ?? '';
-  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
-  return `${first}${last}`.toUpperCase() || '?';
-}
 
 interface BoardTaskCardProps {
   task: BoardTaskDto;

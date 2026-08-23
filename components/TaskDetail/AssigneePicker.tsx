@@ -5,14 +5,8 @@
 
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { initials } from './subtaskAttribution';
 import type { OrganizationMemberDto, TaskAssigneeDto } from '@/types/planner';
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.charAt(0) ?? '';
-  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
-  return `${first}${last}`.toUpperCase() || '?';
-}
 
 interface AssigneePickerProps {
   members: OrganizationMemberDto[];

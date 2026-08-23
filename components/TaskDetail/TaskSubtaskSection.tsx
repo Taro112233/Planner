@@ -1,4 +1,4 @@
-// components/TaskPage/TaskPageSubtasks.tsx
+// components/TaskDetail/TaskSubtaskSection.tsx
 // Full subtask tree: shared RecursiveSubtaskList + AddSubtaskForm + the
 // shared per-row SubtaskRowMenu (rename / delete / add nested subtask) —
 // same pieces TaskDetailModal's slide-over uses.
@@ -6,10 +6,13 @@
 
 import React, { useState } from 'react';
 import { ConfirmDeleteModal } from '@/components/shared';
-import { RecursiveSubtaskList, AddSubtaskForm, SubtaskRowMenu } from '@/components/TaskDetail';
+import { RecursiveSubtaskList } from './RecursiveSubtaskList';
+import { AddSubtaskForm } from './AddSubtaskForm';
+import { SubtaskRowMenu } from './SubtaskRowMenu';
+import { countCompleted, countSubtasks } from './subtaskAttribution';
 import type { SubtaskNodeDto } from '@/types/planner';
 
-interface TaskPageSubtasksProps {
+interface TaskSubtaskSectionProps {
   subtasks: SubtaskNodeDto[];
   /**
    * A subtask mutation is in flight. Gates the per-row action menu only —
@@ -17,20 +20,23 @@ interface TaskPageSubtasksProps {
    * (not a blind toggle), so rapid or out-of-order clicks converge.
    */
   menuPending?: boolean;
+  /** Show the done/total counter and progress bar next to the heading. */
+  showProgress?: boolean;
   onToggle: (subtaskId: string, desiredIsDone: boolean) => void;
   onAddSubtask: (title: string, parentSubtaskId?: string) => Promise<boolean>;
   onRenameSubtask: (subtaskId: string, title: string) => Promise<boolean>;
   onDeleteSubtask: (subtaskId: string) => Promise<boolean>;
 }
 
-export function TaskPageSubtasks({
+export function TaskSubtaskSection({
   subtasks,
   menuPending = false,
+  showProgress = false,
   onToggle,
   onAddSubtask,
   onRenameSubtask,
   onDeleteSubtask,
-}: TaskPageSubtasksProps) {
+}: TaskSubtaskSectionProps) {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -42,9 +48,38 @@ export function TaskPageSubtasks({
     setDeleteTarget(null);
   };
 
+  // Counts every level, unlike TaskItem.subtaskTotal/Done which count root
+  // subtasks only (prisma/Instruction-task.md invariant I6).
+  const total = showProgress ? countSubtasks(subtasks) : 0;
+  const completed = showProgress ? countCompleted(subtasks) : 0;
+  const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
   return (
     <section aria-label="Subtasks">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-3">Subtasks</h2>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">Subtasks</h2>
+        {showProgress && total > 0 && (
+          <span className="text-xs text-content-tertiary tabular-nums">
+            {completed}/{total}
+          </span>
+        )}
+      </div>
+
+      {showProgress && total > 0 && (
+        <div
+          className="mb-4 h-1 w-full overflow-hidden rounded-full bg-surface-tertiary"
+          role="progressbar"
+          aria-valuenow={progressPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${progressPct}% of subtasks completed`}
+        >
+          <div
+            className="h-full rounded-full bg-interactive-primary transition-all duration-500"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      )}
 
       {subtasks.length > 0 ? (
         <RecursiveSubtaskList

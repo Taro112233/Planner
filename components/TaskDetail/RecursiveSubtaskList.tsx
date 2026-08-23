@@ -7,6 +7,7 @@
 import React from 'react';
 import * as Checkbox from '@radix-ui/react-checkbox';
 import { Check, ChevronRight } from 'lucide-react';
+import { SubtaskCheckedBy } from './SubtaskCheckedBy';
 import type { SubtaskNodeDto } from '@/types/planner';
 
 // ─────────────────────────────────────────────
@@ -36,6 +37,10 @@ interface RecursiveSubtaskListProps {
    * TaskDetailModal, which doesn't pass this prop.
    */
   renderNodeExtra?: (subtask: SubtaskNodeDto, depth: number) => React.ReactNode;
+  /** Show who ticked each done row and when. */
+  showCheckedBy?: boolean;
+  /** Show "done/total" for rows that have direct children. */
+  showChildCount?: boolean;
 }
 
 const MAX_DEPTH = 10;
@@ -50,6 +55,8 @@ export function RecursiveSubtaskList({
   isToggling = false,
   depth = 0,
   renderNodeExtra,
+  showCheckedBy = true,
+  showChildCount = true,
 }: RecursiveSubtaskListProps) {
   if (!subtasks || subtasks.length === 0) return null;
   if (depth > MAX_DEPTH) return null;
@@ -69,6 +76,8 @@ export function RecursiveSubtaskList({
           isToggling={isToggling}
           depth={depth}
           renderNodeExtra={renderNodeExtra}
+          showCheckedBy={showCheckedBy}
+          showChildCount={showChildCount}
         />
       ))}
     </ul>
@@ -85,9 +94,19 @@ interface SubtaskRowProps {
   isToggling: boolean;
   depth: number;
   renderNodeExtra?: (subtask: SubtaskNodeDto, depth: number) => React.ReactNode;
+  showCheckedBy: boolean;
+  showChildCount: boolean;
 }
 
-function SubtaskRow({ subtask, onToggle, isToggling, depth, renderNodeExtra }: SubtaskRowProps) {
+function SubtaskRow({
+  subtask,
+  onToggle,
+  isToggling,
+  depth,
+  renderNodeExtra,
+  showCheckedBy,
+  showChildCount,
+}: SubtaskRowProps) {
   const hasChildren = subtask.children.length > 0;
 
   return (
@@ -137,11 +156,30 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth, renderNodeExtra }: S
           {subtask.title}
         </label>
 
-        {renderNodeExtra && (
-          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-            {renderNodeExtra(subtask, depth)}
-          </div>
+        {/* Always-visible metadata sits outside the hover-reveal wrapper below,
+            which exists for the action menu. */}
+        {showChildCount && subtask.childTotal > 0 && (
+          <span className="shrink-0 text-[10px] text-content-tertiary tabular-nums">
+            {subtask.childDone}/{subtask.childTotal}
+          </span>
         )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {showCheckedBy && (
+            <SubtaskCheckedBy
+              isDone={subtask.isDone}
+              name={subtask.checkedByName}
+              avatarUrl={subtask.checkedByAvatarUrl}
+              checkedAt={subtask.checkedAt}
+            />
+          )}
+
+          {renderNodeExtra && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+              {renderNodeExtra(subtask, depth)}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Recursive children */}
@@ -152,6 +190,8 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth, renderNodeExtra }: S
           isToggling={isToggling}
           depth={depth + 1}
           renderNodeExtra={renderNodeExtra}
+          showCheckedBy={showCheckedBy}
+          showChildCount={showChildCount}
         />
       )}
     </li>

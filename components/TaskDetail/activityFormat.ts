@@ -38,6 +38,9 @@ export function formatActivity(activity: TaskActivityDto): string {
     case 'SUBTASK_DELETED':
       return `deleted a subtask${target}`;
     default:
-      return activity.action.replace(/_/g, ' ').toLowerCase();
+      // ActivityActionValue is exhausted above, so `action` narrows to never
+      // here. Kept as a runtime guard for enum values added server-side before
+      // this file learns about them — hence String() rather than a method call.
+      return String(activity.action).replace(/_/g, ' ').toLowerCase();
   }
 }

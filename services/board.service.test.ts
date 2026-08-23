@@ -648,10 +648,85 @@ describe('getTaskDetail', () => {
         id: 'act-1',
         action: 'TASK_CREATED',
         actorNameSnapshot: 'Actor Name',
+        actorAvatarUrl: null,
         targetTitle: null,
         createdAt: '2024-01-03T00:00:00.000Z',
       },
     ]);
+  });
+
+  it('carries the checked-by snapshot and checkedAt onto the tree node', async () => {
+    prismaMock.subtask.findMany.mockResolvedValue([
+      {
+        id: 'st-done',
+        parentSubtaskId: null,
+        title: 'Done root',
+        isDone: true,
+        depth: 0,
+        childTotal: 0,
+        childDone: 0,
+        checkedByNameSnapshot: 'Ada Lovelace',
+        checkedByAvatarSnapshot: 'https://example.test/ada.png',
+        checkedAt: new Date('2024-02-01T08:30:00Z'),
+      },
+    ] as never);
+    prismaMock.taskActivity.findMany.mockResolvedValue([] as never);
+
+    const result = await getTaskDetail('org-1', 'task-1');
+
+    expect(result.subtasks[0]).toMatchObject({
+      checkedByName: 'Ada Lovelace',
+      checkedByAvatarUrl: 'https://example.test/ada.png',
+      checkedAt: '2024-02-01T08:30:00.000Z',
+    });
+  });
+
+  it('leaves the checked-by fields null for a subtask nobody has ticked', async () => {
+    prismaMock.subtask.findMany.mockResolvedValue([
+      {
+        id: 'st-open',
+        parentSubtaskId: null,
+        title: 'Open root',
+        isDone: false,
+        depth: 0,
+        childTotal: 0,
+        childDone: 0,
+        checkedByNameSnapshot: null,
+        checkedByAvatarSnapshot: null,
+        checkedAt: null,
+      },
+    ] as never);
+    prismaMock.taskActivity.findMany.mockResolvedValue([] as never);
+
+    const result = await getTaskDetail('org-1', 'task-1');
+
+    expect(result.subtasks[0]).toMatchObject({
+      checkedByName: null,
+      checkedByAvatarUrl: null,
+      checkedAt: null,
+    });
+  });
+
+  it('selects the checked-by snapshot columns and the activity actor avatar', async () => {
+    prismaMock.subtask.findMany.mockResolvedValue([] as never);
+    prismaMock.taskActivity.findMany.mockResolvedValue([] as never);
+
+    await getTaskDetail('org-1', 'task-1');
+
+    expect(prismaMock.subtask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          checkedByNameSnapshot: true,
+          checkedByAvatarSnapshot: true,
+          checkedAt: true,
+        }),
+      })
+    );
+    expect(prismaMock.taskActivity.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({ actorAvatarSnapshot: true }),
+      })
+    );
   });
 
   it('flattens assignee names and badges onto the card', async () => {
@@ -720,6 +795,33 @@ describe('listTaskActivity', () => {
         take: 20,
       })
     );
+  });
+
+  it('exposes the actor avatar snapshot on each row', async () => {
+    prismaMock.taskActivity.findMany.mockResolvedValue([
+      {
+        id: 'act-1',
+        action: 'SUBTASK_CHECKED',
+        actorNameSnapshot: 'Ada Lovelace',
+        actorAvatarSnapshot: 'https://example.test/ada.png',
+        targetTitle: 'Write the spec',
+        createdAt: new Date('2024-02-01T00:00:00Z'),
+      },
+      {
+        id: 'act-2',
+        action: 'TASK_CREATED',
+        actorNameSnapshot: 'Grace',
+        actorAvatarSnapshot: null,
+        targetTitle: null,
+        createdAt: new Date('2024-01-31T00:00:00Z'),
+      },
+    ] as never);
+    prismaMock.taskActivity.count.mockResolvedValue(2);
+
+    const result = await listTaskActivity('org-1', 'task-1', { skip: 0, take: 20 });
+
+    expect(result.items[0].actorAvatarUrl).toBe('https://example.test/ada.png');
+    expect(result.items[1].actorAvatarUrl).toBeNull();
   });
 
   it('throws "Task not found" when the task is missing or trashed', async () => {

@@ -1,4 +1,4 @@
-// components/TaskPage/TaskPageDates.tsx
+// components/TaskDetail/TaskDatesEditor.tsx
 // Start/due date pickers (Popover + Calendar, single-date mode each).
 'use client';
 
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-interface TaskPageDatesProps {
+interface TaskDatesEditorProps {
   startDate: string | null;
   dueDate: string | null;
   onChange: (dates: { startDate: string | null; dueDate: string | null }) => void;
@@ -19,7 +19,7 @@ function formatLabel(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Set date';
 }
 
-export function TaskPageDates({ startDate, dueDate, onChange, disabled = false }: TaskPageDatesProps) {
+export function TaskDatesEditor({ startDate, dueDate, onChange, disabled = false }: TaskDatesEditorProps) {
   const pick = (field: 'startDate' | 'dueDate') => (date: Date | undefined) => {
     onChange({
       startDate: field === 'startDate' ? (date ? date.toISOString() : null) : startDate,

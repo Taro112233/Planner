@@ -14,13 +14,19 @@ import { ConfirmDeleteModal } from '@/components/shared';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useBoardGroups } from '@/hooks/useBoardGroups';
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
-import { StatusChipRow, AssigneePicker, PriorityChipRow } from '@/components/TaskDetail';
+import {
+  StatusChipRow,
+  AssigneePicker,
+  PriorityChipRow,
+  LastCheckedBanner,
+  TaskDatesEditor,
+  TaskDescriptionEditor,
+  TaskSubtaskSection,
+  TaskBadgeList,
+} from '@/components/TaskDetail';
 import type { TaskPriority } from '@/types/planner';
 import { TaskPageSkeleton } from './TaskPageSkeleton';
 import { TaskPageHeader } from './TaskPageHeader';
-import { TaskPageDescription } from './TaskPageDescription';
-import { TaskPageDates } from './TaskPageDates';
-import { TaskPageSubtasks } from './TaskPageSubtasks';
 import { TaskPageActivity } from './TaskPageActivity';
 
 interface TaskPageProps {
@@ -214,7 +220,7 @@ export function TaskPage({ taskId }: TaskPageProps) {
 
         <section aria-label="Dates">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-2">Dates</h2>
-          <TaskPageDates
+          <TaskDatesEditor
             startDate={task.startDate}
             dueDate={task.dueDate}
             disabled={isPending('dates')}
@@ -222,11 +228,13 @@ export function TaskPage({ taskId }: TaskPageProps) {
           />
         </section>
 
-        <TaskPageDescription
+        <TaskDescriptionEditor
           description={task.description}
           saving={isPending('description')}
           onSave={handleDescriptionSave}
         />
+
+        <TaskBadgeList badges={task.badges} />
 
         <section aria-label="Assignees">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-2">Assignees</h2>
@@ -238,7 +246,7 @@ export function TaskPage({ taskId }: TaskPageProps) {
           />
         </section>
 
-        <TaskPageSubtasks
+        <TaskSubtaskSection
           subtasks={task.subtasks}
           menuPending={isPending('subtasks')}
           onToggle={handleToggleSubtask}
@@ -246,6 +254,8 @@ export function TaskPage({ taskId }: TaskPageProps) {
           onRenameSubtask={handleRenameSubtask}
           onDeleteSubtask={handleDeleteSubtask}
         />
+
+        <LastCheckedBanner subtasks={task.subtasks} />
 
         <TaskPageActivity taskId={taskId} refreshKey={dataVersion} />
       </div>

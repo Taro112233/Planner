@@ -13,6 +13,27 @@
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
+/**
+ * Every value of the ActivityAction enum in prisma/schemas/task-item.prisma,
+ * hand-mirrored so this file stays Prisma-free like the two unions above.
+ */
+export type ActivityActionValue =
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'TASK_STATUS_CHANGED'
+  | 'TASK_ASSIGNED'
+  | 'TASK_UNASSIGNED'
+  | 'TASK_MOVED'
+  | 'TASK_DELETED'
+  | 'TASK_RESTORED'
+  | 'TASK_PURGED'
+  | 'SUBTASK_CREATED'
+  | 'SUBTASK_RENAMED'
+  | 'SUBTASK_CHECKED'
+  | 'SUBTASK_UNCHECKED'
+  | 'SUBTASK_MOVED'
+  | 'SUBTASK_DELETED';
+
 /** A single organization member assigned to a TaskItem. */
 export interface TaskAssigneeDto {
   organizationUserId: string;
@@ -76,13 +97,22 @@ export interface SubtaskNodeDto {
   depth: number;
   childTotal: number;
   childDone: number;
+  /**
+   * Snapshot of who ticked this subtask, taken at check time. All three are
+   * null while the subtask is not done — setSubtaskDone clears them on uncheck
+   * (prisma/Instruction-task.md invariant I7).
+   */
+  checkedByName: string | null;
+  checkedByAvatarUrl: string | null;
+  checkedAt: string | null;
   children: SubtaskNodeDto[];
 }
 
 export interface TaskActivityDto {
   id: string;
-  action: string;
+  action: ActivityActionValue;
   actorNameSnapshot: string;
+  actorAvatarUrl: string | null;
   targetTitle: string | null;
   createdAt: string;
 }

@@ -90,6 +90,53 @@ interface SubtaskRow {
   depth: number;
   childTotal: number;
   childDone: number;
+  checkedByNameSnapshot?: string | null;
+  checkedByAvatarSnapshot?: string | null;
+  checkedAt?: Date | null;
+}
+
+/** Columns every subtask read needs to build a SubtaskNodeDto. */
+const SUBTASK_NODE_SELECT = {
+  id: true,
+  parentSubtaskId: true,
+  title: true,
+  isDone: true,
+  depth: true,
+  childTotal: true,
+  childDone: true,
+  checkedByNameSnapshot: true,
+  checkedByAvatarSnapshot: true,
+  checkedAt: true,
+} satisfies Prisma.SubtaskSelect;
+
+/** Columns every activity read needs to build a TaskActivityDto. */
+const ACTIVITY_SELECT = {
+  id: true,
+  action: true,
+  actorNameSnapshot: true,
+  actorAvatarSnapshot: true,
+  targetTitle: true,
+  createdAt: true,
+} satisfies Prisma.TaskActivitySelect;
+
+interface ActivityRow {
+  id: string;
+  action: TaskActivityDto['action'];
+  actorNameSnapshot: string;
+  actorAvatarSnapshot?: string | null;
+  targetTitle: string | null;
+  createdAt: Date;
+}
+
+function serializeActivity(row: ActivityRow): TaskActivityDto {
+  return {
+    id: row.id,
+    action: row.action,
+    actorNameSnapshot: row.actorNameSnapshot,
+    actorAvatarUrl: row.actorAvatarSnapshot ?? null,
+    targetTitle: row.targetTitle,
+    createdAt: row.createdAt.toISOString(),
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -134,6 +181,11 @@ function buildSubtaskTree(rows: SubtaskRow[]): SubtaskNodeDto[] {
       depth: row.depth,
       childTotal: row.childTotal,
       childDone: row.childDone,
+      checkedByName: row.checkedByNameSnapshot ?? null,
+      checkedByAvatarUrl: row.checkedByAvatarSnapshot ?? null,
+      // Truthiness guard rather than `?.toISOString() ?? null`: rows that omit
+      // the column entirely (undefined) must serialize to null, not crash.
+      checkedAt: row.checkedAt ? row.checkedAt.toISOString() : null,
       children: [],
     });
   });
@@ -587,21 +639,13 @@ async function assembleTaskDetail(
     prisma.subtask.findMany({
       where: { taskItemId: task.id, organizationId },
       orderBy: { position: 'asc' },
-      select: {
-        id: true,
-        parentSubtaskId: true,
-        title: true,
-        isDone: true,
-        depth: true,
-        childTotal: true,
-        childDone: true,
-      },
+      select: SUBTASK_NODE_SELECT,
     }),
     prisma.taskActivity.findMany({
       where: { taskItemId: task.id, organizationId },
       orderBy: { createdAt: 'desc' },
       take: 10,
-      select: { id: true, action: true, actorNameSnapshot: true, targetTitle: true, createdAt: true },
+      select: ACTIVITY_SELECT,
     }),
   ]);
 
@@ -609,13 +653,7 @@ async function assembleTaskDetail(
     ...serializeBoardTask(task),
     description: task.description,
     subtasks: buildSubtaskTree(subtaskRows),
-    activities: activityRows.map((a) => ({
-      id: a.id,
-      action: a.action,
-      actorNameSnapshot: a.actorNameSnapshot,
-      targetTitle: a.targetTitle,
-      createdAt: a.createdAt.toISOString(),
-    })),
+    activities: activityRows.map(serializeActivity),
   };
 }
 
@@ -639,19 +677,13 @@ export async function listTaskActivity(
       orderBy: { createdAt: 'desc' },
       skip: page.skip,
       take: page.take,
-      select: { id: true, action: true, actorNameSnapshot: true, targetTitle: true, createdAt: true },
+      select: ACTIVITY_SELECT,
     }),
     prisma.taskActivity.count({ where: { taskItemId, organizationId } }),
   ]);
 
   return {
-    items: rows.map((row) => ({
-      id: row.id,
-      action: row.action,
-      actorNameSnapshot: row.actorNameSnapshot,
-      targetTitle: row.targetTitle,
-      createdAt: row.createdAt.toISOString(),
-    })),
+    items: rows.map(serializeActivity),
     total,
   };
 }

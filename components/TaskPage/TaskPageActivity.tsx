@@ -6,7 +6,7 @@ import React, { useEffect, useRef } from 'react';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDataList } from '@/hooks/useDataList';
-import { formatActivity } from '@/components/TaskDetail';
+import { TaskActivityFeed } from '@/components/TaskDetail';
 import type { TaskActivityDto } from '@/types/planner';
 
 interface TaskPageActivityProps {
@@ -49,19 +49,7 @@ export function TaskPageActivity({ taskId, refreshKey = 0 }: TaskPageActivityPro
         <p className="text-sm text-content-tertiary">No activity yet.</p>
       )}
 
-      {items.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {items.map((activity) => (
-            <div key={activity.id} className="text-xs text-content-secondary leading-relaxed">
-              <span className="font-medium text-content-primary">{activity.actorNameSnapshot}</span>{' '}
-              {formatActivity(activity)}
-              <span className="block text-content-tertiary mt-0.5">
-                {new Date(activity.createdAt).toLocaleString()}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      {items.length > 0 && <TaskActivityFeed items={items} />}
 
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-border-subtle">

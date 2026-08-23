@@ -18,7 +18,9 @@ import { PriorityChipRow } from './PriorityChipRow';
 import { AddSubtaskForm } from './AddSubtaskForm';
 import { SubtaskRowMenu } from './SubtaskRowMenu';
 import { PRIORITY_STYLES } from './priorityStyles';
-import { formatActivity } from './activityFormat';
+import { LastCheckedBanner } from './LastCheckedBanner';
+import { TaskActivityFeed } from './TaskActivityFeed';
+import { countCompleted, countSubtasks } from './subtaskAttribution';
 import type { BoardGroupDto, TaskDetailDto, TaskPriority } from '@/types/planner';
 
 // ─────────────────────────────────────────────
@@ -544,22 +546,14 @@ export function TaskDetailModal({
                   </div>
                 </section>
 
+                <LastCheckedBanner subtasks={task.subtasks} />
+
                 {task.activities.length > 0 && (
                   <section aria-label="Activity">
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-3">
                       Activity
                     </h2>
-                    <div className="flex flex-col gap-3">
-                      {task.activities.map((activity) => (
-                        <div key={activity.id} className="text-xs text-content-secondary leading-relaxed">
-                          <span className="font-medium text-content-primary">{activity.actorNameSnapshot}</span>{' '}
-                          {formatActivity(activity)}
-                          <span className="block text-content-tertiary mt-0.5">
-                            {new Date(activity.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <TaskActivityFeed items={task.activities} />
                   </section>
                 )}
               </div>
@@ -589,16 +583,3 @@ export function TaskDetailModal({
   );
 }
 
-// ─────────────────────────────────────────────
-// Utilities
-// ─────────────────────────────────────────────
-
-import type { SubtaskNodeDto } from '@/types/planner';
-
-function countSubtasks(subtasks: SubtaskNodeDto[]): number {
-  return subtasks.reduce((acc, s) => acc + 1 + countSubtasks(s.children), 0);
-}
-
-function countCompleted(subtasks: SubtaskNodeDto[]): number {
-  return subtasks.reduce((acc, s) => acc + (s.isDone ? 1 : 0) + countCompleted(s.children), 0);
-}
