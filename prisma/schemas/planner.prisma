@@ -21,6 +21,8 @@ model Organization {
 
   // Relations
   users      OrganizationUser[]
+  planGroups PlanGroup[]
+  plans      Plan[]
   groups     Group[]
   badges     TaskBadge[]
   activities TaskActivity[]
@@ -34,13 +36,19 @@ model Organization {
 // ─────────────────────────────────────────────
 
 /**
- * A Group is a Kanban column or logical category within one Organization.
- * Display and WIP settings are explicit columns rather than duplicated JSON.
+ * A Group is a Kanban column within one Plan. (The mockup's "กลุ่ม" is
+ * PlanGroup, in plan.prisma — this is "หัวข้อ".)
+ *
+ * `planId` is nullable only until the backfill has run; step 3 of the
+ * migration in Instruction-group.md §3 makes it required.
  */
 model Group {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  planId String?
+  plan   Plan?   @relation(fields: [planId, organizationId], references: [id, organizationId], onDelete: Cascade)
 
   name        String
   description String?
@@ -55,9 +63,14 @@ model Group {
   // Relations
   taskItems TaskItem[]
 
+  // Column names must be unique within a plan, not across the organization —
+  // two plans may each have a "To Do". Swapped in migration step 3; the
+  // organization-wide constraint stays until then so existing rows keep their
+  // guarantee.
   @@unique([organizationId, name])
   // Composite tenant key used by TaskItem to prevent cross-org relations.
   @@unique([id, organizationId])
   @@index([organizationId, sortOrder])
+  @@index([planId, sortOrder])
   @@map("groups")
 }

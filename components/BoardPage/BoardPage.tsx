@@ -30,9 +30,22 @@ import { BoardTimelineView } from './BoardTimelineView';
 import { NewTaskButton } from './NewTaskButton';
 import { TaskDetailModal } from '@/components/TaskDetail';
 import type { TaskPriority } from '@/types/planner';
+import type { GroupColorKey } from '@/lib/shared/group-colors';
 
 export function BoardPage() {
-  const { board, loading, error, moveTask, addTask, addGroup, applyTaskUpdate } = useBoard();
+  const {
+    board,
+    loading,
+    error,
+    refetch,
+    moveTask,
+    addTask,
+    addGroup,
+    updateGroup,
+    reorderGroups,
+    deleteGroup,
+    applyTaskUpdate,
+  } = useBoard();
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [view, setView] = useState<BoardViewMode>('board');
@@ -115,9 +128,52 @@ export function BoardPage() {
     if (!ok) toast.error('Failed to add task');
   };
 
-  const handleAddColumn = async (name: string) => {
-    const ok = await addGroup(name);
-    if (!ok) toast.error('Failed to add column');
+  const handleAddColumn = async (name: string, color?: GroupColorKey) => {
+    const ok = await addGroup(name, color);
+    if (!ok) toast.error('เพิ่มหัวข้อไม่สำเร็จ');
+  };
+
+  const handleRenameGroup = async (groupId: string, name: string) => {
+    const ok = await updateGroup(groupId, { name });
+    if (!ok) toast.error('เปลี่ยนชื่อหัวข้อไม่สำเร็จ');
+    return ok;
+  };
+
+  const handleRecolorGroup = async (groupId: string, color: GroupColorKey) => {
+    const ok = await updateGroup(groupId, { color });
+    if (!ok) toast.error('เปลี่ยนสีหัวข้อไม่สำเร็จ');
+  };
+
+  const handleSetWipLimit = async (groupId: string, wipLimit: number | null) => {
+    const ok = await updateGroup(groupId, { wipLimit });
+    if (!ok) toast.error('ตั้งค่าจำนวนงานสูงสุดไม่สำเร็จ');
+  };
+
+  /** Swaps a column with its neighbour and sends the complete new ordering. */
+  const handleMoveGroup = async (groupId: string, direction: -1 | 1) => {
+    if (!board) return;
+    const ids = board.groups.map((group) => group.id);
+    const from = ids.indexOf(groupId);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    const ok = await reorderGroups(ids);
+    if (!ok) toast.error('ย้ายหัวข้อไม่สำเร็จ');
+  };
+
+  const handleDeleteGroup = async (groupId: string, targetGroupId: string) => {
+    const target = board?.groups.find((group) => group.id === targetGroupId);
+    const result = await deleteGroup(groupId, targetGroupId);
+    if (!result) {
+      toast.error('ลบหัวข้อไม่สำเร็จ');
+      return;
+    }
+    toast.success(
+      result.movedTaskCount > 0
+        ? `ย้าย ${result.movedTaskCount} งานไปที่ "${target?.name ?? 'หัวข้อปลายทาง'}" แล้ว`
+        : 'ลบหัวข้อแล้ว'
+    );
   };
 
   const totalTasks = board.groups.reduce((n, g) => n + g.taskItems.length, 0);
@@ -144,12 +200,20 @@ export function BoardPage() {
             onDragEnd={handleDragEnd}
           >
             <div className="flex items-start gap-4 overflow-x-auto pb-4">
-              {board.groups.map((group) => (
+              {board.groups.map((group, index) => (
                 <BoardColumn
                   key={group.id}
                   group={group}
+                  siblings={board.groups.filter((g) => g.id !== group.id)}
+                  canMoveLeft={index > 0}
+                  canMoveRight={index < board.groups.length - 1}
                   onOpenTask={setOpenTaskId}
                   onAddTask={handleAddTask}
+                  onRenameGroup={handleRenameGroup}
+                  onRecolorGroup={handleRecolorGroup}
+                  onSetWipLimit={handleSetWipLimit}
+                  onMoveGroup={handleMoveGroup}
+                  onDeleteGroup={handleDeleteGroup}
                 />
               ))}
               <AddColumnPopover onAddColumn={handleAddColumn} />
@@ -172,6 +236,10 @@ export function BoardPage() {
           open={!!openTaskId}
           onOpenChange={(open) => !open && setOpenTaskId(null)}
           onTaskUpdated={applyTaskUpdate}
+          onTaskDeleted={() => {
+            setOpenTaskId(null);
+            void refetch();
+          }}
           groups={board.groups}
         />
       )}

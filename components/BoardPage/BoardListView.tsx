@@ -7,6 +7,7 @@ import React from 'react';
 import { Calendar } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { BoardDto, BoardTaskDto } from '@/types/planner';
+import { resolveGroupColor } from '@/lib/shared/group-colors';
 
 interface BoardListViewProps {
   board: BoardDto;
@@ -28,7 +29,7 @@ export function BoardListView({ board, onOpenTask }: BoardListViewProps) {
           <div className="flex items-center gap-2 py-2">
             <span
               className="h-2 w-2 rounded-full shrink-0"
-              style={{ backgroundColor: group.color ?? 'var(--color-interactive-primary)' }}
+              style={{ backgroundColor: resolveGroupColor(group.color) }}
             />
             <h2 className="text-sm font-semibold text-content-primary">{group.name}</h2>
             <span className="text-xs text-content-tertiary tabular-nums">{group.taskItems.length}</span>

@@ -18,6 +18,7 @@ import type {
   BoardGroupDto,
   BoardTaskDto,
   GroupSummaryDto,
+  GroupSettingsDto,
   SubtaskNodeDto,
   TaskActivityDto,
   TaskDetailDto,
@@ -230,9 +231,13 @@ function isUniqueConstraintError(error: unknown): boolean {
 // Board — read
 // ─────────────────────────────────────────────
 
-export async function getBoard(organizationId: string): Promise<BoardDto> {
+/**
+ * The columns and cards of ONE plan. A board is a plan; an organization can
+ * hold several (services/plan.service.ts resolves which one).
+ */
+export async function getBoard(organizationId: string, planId: string): Promise<BoardDto> {
   const groups = await prisma.group.findMany({
-    where: { organizationId },
+    where: { organizationId, planId },
     orderBy: { sortOrder: 'asc' },
     select: {
       id: true,
@@ -251,6 +256,7 @@ export async function getBoard(organizationId: string): Promise<BoardDto> {
 
   return {
     organizationId,
+    planId,
     groups: groups.map((group) => ({
       id: group.id,
       name: group.name,
@@ -267,16 +273,34 @@ export async function getBoard(organizationId: string): Promise<BoardDto> {
 // Groups (columns)
 // ─────────────────────────────────────────────
 
+/** The Group columns every group-shaped DTO needs (no nested taskItems). */
+const GROUP_SETTINGS_SELECT = {
+  id: true,
+  name: true,
+  color: true,
+  icon: true,
+  wipLimit: true,
+  sortOrder: true,
+} satisfies Prisma.GroupSelect;
+
+const GROUP_NOT_FOUND = 'Group not found';
+const TARGET_GROUP_NOT_FOUND = 'Target group not found';
+const TARGET_GROUP_MUST_DIFFER = 'Target column must be different';
+const TARGET_GROUP_DIFFERENT_PLAN = 'Target column must be in the same plan';
+const CANNOT_DELETE_LAST_GROUP = 'Cannot delete the last column';
+const GROUP_ORDER_MISMATCH = 'Group order must include every column exactly once';
+
 /**
  * @throws Error('Duplicate entry') — a column with this name already exists
  */
 export async function createGroup(
   organizationId: string,
+  planId: string,
   name: string,
   color: string | null
 ): Promise<BoardGroupDto> {
   const last = await prisma.group.findFirst({
-    where: { organizationId },
+    where: { organizationId, planId },
     orderBy: { sortOrder: 'desc' },
     select: { sortOrder: true },
   });
@@ -285,11 +309,12 @@ export async function createGroup(
     const group = await prisma.group.create({
       data: {
         organizationId,
+        planId,
         name,
         color,
         sortOrder: (last?.sortOrder ?? -1) + 1,
       },
-      select: { id: true, name: true, color: true, icon: true, wipLimit: true, sortOrder: true },
+      select: GROUP_SETTINGS_SELECT,
     });
 
     return { ...group, taskItems: [] };
@@ -303,11 +328,204 @@ export async function createGroup(
  * Lightweight column list (no nested taskItems) for contexts without a full
  * board fetch, e.g. the standalone TaskPage's status picker.
  */
-export async function listGroups(organizationId: string): Promise<GroupSummaryDto[]> {
+export async function listGroups(
+  organizationId: string,
+  planId: string
+): Promise<GroupSummaryDto[]> {
   return prisma.group.findMany({
-    where: { organizationId },
+    where: { organizationId, planId },
     orderBy: { sortOrder: 'asc' },
     select: { id: true, name: true, color: true, sortOrder: true },
+  });
+}
+
+/**
+ * Patch a column's display settings.
+ *
+ * Only the keys present in `patch` are written, so an omitted key can never
+ * blank a column — the same "omit when undefined" rule createTask uses for
+ * priority. An explicit `null` clears the value.
+ *
+ * No TaskActivity row: ActivityAction has no GROUP_* value, and inventing one
+ * would mean a schema change. Consistent with createGroup, which logs nothing.
+ *
+ * @throws Error('Group not found')
+ * @throws Error('Duplicate entry') — another column already has this name
+ */
+export async function updateGroup(
+  organizationId: string,
+  groupId: string,
+  patch: { name?: string; color?: string | null; wipLimit?: number | null }
+): Promise<GroupSettingsDto> {
+  const existing = await prisma.group.findFirst({
+    where: { id: groupId, organizationId },
+    select: { id: true },
+  });
+  if (!existing) throw new Error(GROUP_NOT_FOUND);
+
+  const data: Prisma.GroupUpdateInput = {};
+  if (patch.name !== undefined) data.name = patch.name;
+  if (patch.color !== undefined) data.color = patch.color;
+  if (patch.wipLimit !== undefined) data.wipLimit = patch.wipLimit;
+
+  try {
+    return await prisma.group.update({
+      where: { id: groupId },
+      data,
+      select: GROUP_SETTINGS_SELECT,
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) throw new Error('Duplicate entry');
+    throw error;
+  }
+}
+
+/**
+ * Delete a column after relocating every card it holds.
+ *
+ * TaskItem.group is `onDelete: Cascade`, so prisma.group.delete() would
+ * hard-delete every card in the column — INCLUDING soft-deleted ones — and
+ * cascade their subtasks, assignees and badges. Emptying the column first
+ * turns that cascade into a no-op. Trashed cards move too and stay trashed; on
+ * restore they land in the target column, and TrashedTaskDto.groupName (read
+ * live off the required relation) starts reporting the target's name.
+ *
+ * The relocation is real data movement, so each moved card gets a TASK_MOVED
+ * activity row; they share one batchId so the UI can fold them into a single
+ * entry. There is no GROUP_DELETED action to log without a schema change.
+ *
+ * @throws Error('Target column must be different')
+ * @throws Error('Group not found')
+ * @throws Error('Target group not found')
+ * @throws Error('Cannot delete the last column')
+ */
+export async function deleteGroup(
+  organizationId: string,
+  groupId: string,
+  targetGroupId: string,
+  actor: ActorInput
+): Promise<{ id: string; movedTaskCount: number }> {
+  if (groupId === targetGroupId) throw new Error(TARGET_GROUP_MUST_DIFFER);
+
+  const source = await prisma.group.findFirst({
+    where: { id: groupId, organizationId },
+    select: { id: true, name: true, planId: true },
+  });
+  if (!source) throw new Error(GROUP_NOT_FOUND);
+
+  // Scoping the target lookup to the organization is the cross-org guard.
+  const target = await prisma.group.findFirst({
+    where: { id: targetGroupId, organizationId },
+    select: { id: true, name: true, planId: true },
+  });
+  if (!target) throw new Error(TARGET_GROUP_NOT_FOUND);
+
+  // Relocating into another plan would silently move cards onto a different
+  // board, so the target has to live on the same one.
+  if (target.planId !== source.planId) throw new Error(TARGET_GROUP_DIFFERENT_PLAN);
+
+  // Checked before anything moves, so a refused delete never strands cards.
+  // Scoped to the plan: "the last column" means the last on THIS board.
+  const groupCount = await prisma.group.count({
+    where: { organizationId, planId: source.planId },
+  });
+  if (groupCount <= 1) throw new Error(CANNOT_DELETE_LAST_GROUP);
+
+  // No deletedAt filter on either query: trashed cards must move as well, and
+  // appending after *every* row (hidden ones included) keeps positions unique.
+  const highest = await prisma.taskItem.aggregate({
+    where: { organizationId, groupId: targetGroupId },
+    _max: { position: true },
+  });
+  const base = highest._max.position ?? new Prisma.Decimal(0);
+
+  const cards = await prisma.taskItem.findMany({
+    where: { organizationId, groupId },
+    orderBy: { position: 'asc' },
+    select: { id: true, title: true },
+  });
+
+  const batchId = crypto.randomUUID();
+
+  await prisma.$transaction(async (tx) => {
+    for (let index = 0; index < cards.length; index += 1) {
+      const card = cards[index];
+
+      await tx.taskItem.update({
+        where: { id: card.id },
+        data: {
+          groupId: targetGroupId,
+          position: base.plus(index + 1),
+          version: { increment: 1 },
+        },
+      });
+
+      await tx.taskActivity.create({
+        data: {
+          organizationId,
+          taskItemId: card.id,
+          batchId,
+          actorId: actor.organizationUserId,
+          actorUserIdSnapshot: actor.userId,
+          actorNameSnapshot: actor.name,
+          actorAvatarSnapshot: actor.avatarUrl,
+          actorRoleSnapshot: actor.role,
+          action: 'TASK_MOVED',
+          taskItemTitleSnapshot: card.title,
+          changes: {
+            field: 'group',
+            before: source.name,
+            after: target.name,
+            context: { reason: 'group-deleted' },
+          },
+        },
+      });
+    }
+
+    // Last, against a column that is now empty.
+    await tx.group.delete({ where: { id: groupId } });
+  });
+
+  return { id: groupId, movedTaskCount: cards.length };
+}
+
+/**
+ * Rewrite sortOrder to 0..n-1 in the order given.
+ *
+ * Group.sortOrder is an Int, so the fractional-index trick TaskItem.position
+ * uses is unavailable — the client sends the COMPLETE ordering and every row is
+ * renumbered. Columns number in the tens, so N updates in one transaction is
+ * cheap. No activity row (see updateGroup).
+ *
+ * @throws Error('Group order must include every column exactly once')
+ */
+export async function reorderGroups(
+  organizationId: string,
+  planId: string,
+  orderedGroupIds: string[]
+): Promise<GroupSettingsDto[]> {
+  const existing = await prisma.group.findMany({
+    where: { organizationId, planId },
+    select: { id: true },
+  });
+
+  const ordered = new Set(orderedGroupIds);
+  const isPermutation =
+    ordered.size === orderedGroupIds.length &&
+    orderedGroupIds.length === existing.length &&
+    existing.every((group) => ordered.has(group.id));
+  if (!isPermutation) throw new Error(GROUP_ORDER_MISMATCH);
+
+  await prisma.$transaction(
+    orderedGroupIds.map((id, index) =>
+      prisma.group.update({ where: { id }, data: { sortOrder: index } })
+    )
+  );
+
+  return prisma.group.findMany({
+    where: { organizationId, planId },
+    orderBy: { sortOrder: 'asc' },
+    select: GROUP_SETTINGS_SELECT,
   });
 }
 

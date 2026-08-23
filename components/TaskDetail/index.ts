@@ -10,6 +10,7 @@ export { SubtaskRowMenu } from './SubtaskRowMenu';
 export { PriorityChipRow, PRIORITIES } from './PriorityChipRow';
 export { PRIORITY_STYLES } from './priorityStyles';
 export { formatActivity } from './activityFormat';
+export { TaskDetailBody } from './TaskDetailBody';
 export { TaskTitleEditor } from './TaskTitleEditor';
 export { TaskDescriptionEditor } from './TaskDescriptionEditor';
 export { TaskDatesEditor } from './TaskDatesEditor';

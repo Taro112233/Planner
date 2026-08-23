@@ -205,6 +205,13 @@ model TaskActivity {
   subtaskId  String?
   batchId    String  @default(cuid())
 
+  // Denormalized plan reference. Required because the missing TaskItem FK
+  // above makes it impossible to join an activity row back to its plan — and
+  // the group overview page has to list activity across a group's plans.
+  // Nullable: rows written before this column existed have no value.
+  planId           String?
+  planNameSnapshot String?
+
   actorId             String
   actorUserIdSnapshot String
   actorNameSnapshot   String
@@ -224,6 +231,7 @@ model TaskActivity {
 
   @@index([organizationId, taskItemId, createdAt(sort: Desc)])
   @@index([organizationId, actorId, createdAt(sort: Desc)])
+  @@index([organizationId, planId, createdAt(sort: Desc)])
   @@index([batchId])
   @@map("task_activities")
 }

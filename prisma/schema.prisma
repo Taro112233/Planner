@@ -1,6 +1,6 @@
 // This file is auto-generated. Do not edit manually.
 // Edit files in prisma/schemas/ directory instead.
-// Last generated: 2026-08-17T10:26:00.259Z
+// Last generated: 2026-08-23T13:48:49.034Z
 
 generator client {
   provider        = "prisma-client-js"
@@ -225,6 +225,88 @@ model OrganizationUser {
 }
 
 // ==========================================
+// PLAN SCHEMA
+// ==========================================
+
+// prisma/schemas/plan.prisma
+// The two container levels between Organization and Group (the Kanban column):
+//
+//   Organization  = เวิร์กสเปซ
+//   └─ PlanGroup  = กลุ่ม     ("กลุ่มของฉัน" in the mockup)
+//      └─ Plan    = แผนงาน   ("แผนงาน" — one Kanban board)
+//         └─ Group = หัวข้อ   (the column model, defined in planner.prisma)
+//
+// ⚠️ `Group` in this schema is a COLUMN, not the mockup's "กลุ่ม". The mockup's
+// group is PlanGroup. See Instruction-group.md §1.
+
+/**
+ * A folder of plans. Membership is not modeled yet — every member of the
+ * organization sees every group (Instruction-group.md §7).
+ */
+model PlanGroup {
+  id             String @id @default(cuid())
+  organizationId String
+
+  name        String
+  description String?
+  color       String? // Palette key — see lib/shared/group-colors.ts
+  icon        String? // Lucide/custom icon name
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plans        Plan[]
+
+  @@unique([organizationId, name])
+  // Composite tenant key used by Plan to prevent cross-org relations.
+  @@unique([id, organizationId])
+  @@index([organizationId, sortOrder])
+  @@map("plan_groups")
+}
+
+/**
+ * One Kanban board. Its columns are Group rows.
+ *
+ * `planGroupId` is nullable on purpose: the mockup has plans both inside a
+ * group and standing alone, and it keeps the backfill from having to invent a
+ * group for existing data.
+ */
+model Plan {
+  id             String  @id @default(cuid())
+  organizationId String
+  planGroupId    String?
+
+  name      String
+  color     String? // Palette key — see lib/shared/group-colors.ts
+  icon      String?
+  sortOrder Int     @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  // Soft delete, mirroring TaskItem: non-null means the plan is in the trash.
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Restrict, not Cascade: deleting a group must never delete the work inside
+  // it. SetNull is unavailable here because the composite key includes the
+  // required organizationId, and Postgres SET NULL would blank that too — so
+  // deletePlanGroup detaches its plans inside the same transaction first,
+  // exactly as deleteGroup relocates a column's cards before dropping it.
+  planGroup    PlanGroup?   @relation(fields: [planGroupId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  groups Group[]
+
+  @@unique([organizationId, name])
+  // Composite tenant key used by Group to prevent cross-org relations.
+  @@unique([id, organizationId])
+  @@index([organizationId, planGroupId, sortOrder])
+  @@index([organizationId, deletedAt])
+  @@map("plans")
+}
+
+// ==========================================
 // PLANNER SCHEMA
 // ==========================================
 
@@ -251,6 +333,8 @@ model Organization {
 
   // Relations
   users      OrganizationUser[]
+  planGroups PlanGroup[]
+  plans      Plan[]
   groups     Group[]
   badges     TaskBadge[]
   activities TaskActivity[]
@@ -264,13 +348,19 @@ model Organization {
 // ─────────────────────────────────────────────
 
 /**
- * A Group is a Kanban column or logical category within one Organization.
- * Display and WIP settings are explicit columns rather than duplicated JSON.
+ * A Group is a Kanban column within one Plan. (The mockup's "กลุ่ม" is
+ * PlanGroup, in plan.prisma — this is "หัวข้อ".)
+ *
+ * `planId` is nullable only until the backfill has run; step 3 of the
+ * migration in Instruction-group.md §3 makes it required.
  */
 model Group {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  planId String?
+  plan   Plan?   @relation(fields: [planId, organizationId], references: [id, organizationId], onDelete: Cascade)
 
   name        String
   description String?
@@ -285,10 +375,15 @@ model Group {
   // Relations
   taskItems TaskItem[]
 
+  // Column names must be unique within a plan, not across the organization —
+  // two plans may each have a "To Do". Swapped in migration step 3; the
+  // organization-wide constraint stays until then so existing rows keep their
+  // guarantee.
   @@unique([organizationId, name])
   // Composite tenant key used by TaskItem to prevent cross-org relations.
   @@unique([id, organizationId])
   @@index([organizationId, sortOrder])
+  @@index([planId, sortOrder])
   @@map("groups")
 }
 
@@ -503,6 +598,13 @@ model TaskActivity {
   subtaskId  String?
   batchId    String  @default(cuid())
 
+  // Denormalized plan reference. Required because the missing TaskItem FK
+  // above makes it impossible to join an activity row back to its plan — and
+  // the group overview page has to list activity across a group's plans.
+  // Nullable: rows written before this column existed have no value.
+  planId           String?
+  planNameSnapshot String?
+
   actorId             String
   actorUserIdSnapshot String
   actorNameSnapshot   String
@@ -522,6 +624,7 @@ model TaskActivity {
 
   @@index([organizationId, taskItemId, createdAt(sort: Desc)])
   @@index([organizationId, actorId, createdAt(sort: Desc)])
+  @@index([organizationId, planId, createdAt(sort: Desc)])
   @@index([batchId])
   @@map("task_activities")
 }

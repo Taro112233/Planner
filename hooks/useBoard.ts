@@ -14,6 +14,14 @@ import type {
   TaskDetailDto,
   TaskPriority,
 } from '@/types/planner';
+import type { GroupColorKey } from '@/lib/shared/group-colors';
+
+/** The column settings a caller may patch. Omitted keys stay untouched. */
+export interface GroupPatch {
+  name?: string;
+  color?: GroupColorKey | null;
+  wipLimit?: number | null;
+}
 
 export interface UseBoardReturn {
   board: BoardDto | null;
@@ -23,7 +31,14 @@ export interface UseBoardReturn {
   moveTask: (taskId: string, groupId: string, targetIndex: number) => Promise<boolean>;
   /** `priority` omitted → the server applies the schema default (MEDIUM). */
   addTask: (groupId: string, title: string, priority?: TaskPriority) => Promise<boolean>;
-  addGroup: (name: string, color?: string) => Promise<boolean>;
+  addGroup: (name: string, color?: GroupColorKey) => Promise<boolean>;
+  updateGroup: (groupId: string, patch: GroupPatch) => Promise<boolean>;
+  reorderGroups: (orderedGroupIds: string[]) => Promise<boolean>;
+  /** Relocates the column's cards into `targetGroupId`, then deletes it. */
+  deleteGroup: (
+    groupId: string,
+    targetGroupId: string
+  ) => Promise<{ movedTaskCount: number } | null>;
   /** Merges a task edited elsewhere (e.g. the detail panel) into board state. */
   applyTaskUpdate: (task: TaskDetailDto) => void;
 }
@@ -137,7 +152,7 @@ export function useBoard(): UseBoardReturn {
   );
 
   const addGroup = useCallback(
-    async (name: string, color?: string) => {
+    async (name: string, color?: GroupColorKey) => {
       const created = await mutate<{ name: string; color?: string }>('/api/board/groups', {
         method: 'POST',
         body: { name, color },
@@ -150,6 +165,85 @@ export function useBoard(): UseBoardReturn {
       return true;
     },
     [mutate]
+  );
+
+  /**
+   * Patches a column's settings locally first (keeping its cards), then
+   * persists. On failure it refetches to discard — the same shape moveTask
+   * uses.
+   */
+  const updateGroup = useCallback(
+    async (groupId: string, patch: GroupPatch) => {
+      setBoard((prev) =>
+        prev
+          ? {
+              ...prev,
+              groups: prev.groups.map((group) =>
+                group.id === groupId ? { ...group, ...patch } : group
+              ),
+            }
+          : prev
+      );
+
+      const updated = await mutate<GroupPatch>(`/api/board/groups/${groupId}`, {
+        method: 'PATCH',
+        body: patch,
+      });
+
+      if (!updated) {
+        await fetchBoard();
+        return false;
+      }
+      return true;
+    },
+    [mutate, fetchBoard]
+  );
+
+  const reorderGroups = useCallback(
+    async (orderedGroupIds: string[]) => {
+      setBoard((prev) => {
+        if (!prev) return prev;
+        const byId = new Map(prev.groups.map((group) => [group.id, group]));
+        const groups = orderedGroupIds
+          .map((id, index) => {
+            const group = byId.get(id);
+            return group ? { ...group, sortOrder: index } : null;
+          })
+          .filter((group): group is BoardGroupDto => group !== null);
+        // Bail out rather than render a partial board if the ids don't line up.
+        return groups.length === prev.groups.length ? { ...prev, groups } : prev;
+      });
+
+      const updated = await mutate<{ groupIds: string[] }>('/api/board/groups/reorder', {
+        method: 'PATCH',
+        body: { groupIds: orderedGroupIds },
+      });
+
+      if (!updated) {
+        await fetchBoard();
+        return false;
+      }
+      return true;
+    },
+    [mutate, fetchBoard]
+  );
+
+  /**
+   * Not optimistic: the server recomputes the relocated cards' positions, so a
+   * local guess would drift. hasLoadedRef keeps the refetch skeleton-free.
+   */
+  const deleteGroup = useCallback(
+    async (groupId: string, targetGroupId: string) => {
+      const result = await mutate<{ targetGroupId: string }>(`/api/board/groups/${groupId}`, {
+        method: 'DELETE',
+        body: { targetGroupId },
+      });
+      if (!result) return null;
+
+      await fetchBoard();
+      return result as { movedTaskCount: number };
+    },
+    [mutate, fetchBoard]
   );
 
   /**
@@ -198,5 +292,17 @@ export function useBoard(): UseBoardReturn {
     [fetchBoard]
   );
 
-  return { board, loading, error, refetch: fetchBoard, moveTask, addTask, addGroup, applyTaskUpdate };
+  return {
+    board,
+    loading,
+    error,
+    refetch: fetchBoard,
+    moveTask,
+    addTask,
+    addGroup,
+    updateGroup,
+    reorderGroups,
+    deleteGroup,
+    applyTaskUpdate,
+  };
 }

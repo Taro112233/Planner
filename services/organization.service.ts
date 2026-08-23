@@ -13,6 +13,7 @@ import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/server/prisma';
 import type { OrganizationRole } from '@prisma/client';
 import type { OrganizationMemberDto } from '@/types/planner';
+import { DEFAULT_PLAN_NAME } from '@/services/plan.service';
 
 // ─────────────────────────────────────────────
 // Types
@@ -30,10 +31,13 @@ export interface DefaultOrganizationContext {
 // Constants
 // ─────────────────────────────────────────────
 
+// Palette keys, not hex — see lib/shared/group-colors.ts. Organizations
+// provisioned before this change keep their hex and still render (the resolver
+// passes an unrecognized value straight through).
 const DEFAULT_GROUPS = [
-  { name: 'To Do', color: '#94a3b8', sortOrder: 0 },
-  { name: 'In Progress', color: '#3b82f6', sortOrder: 1 },
-  { name: 'Done', color: '#22c55e', sortOrder: 2 },
+  { name: 'To Do', color: 'slate', sortOrder: 0 },
+  { name: 'In Progress', color: 'blue', sortOrder: 1 },
+  { name: 'Done', color: 'green', sortOrder: 2 },
 ] as const;
 
 // ─────────────────────────────────────────────
@@ -42,7 +46,8 @@ const DEFAULT_GROUPS = [
 
 /**
  * Resolve the organization a user acts in, provisioning a default one
- * (with an OWNER membership and 3 starter columns) the first time they're seen.
+ * (with an OWNER membership, a default Plan, and 3 starter columns inside it)
+ * the first time they're seen.
  *
  * v1 assumes exactly one organization per user — there is no switcher yet,
  * so this always returns the earliest membership found.
@@ -94,9 +99,18 @@ export async function getOrCreateDefaultOrganization(
       },
     });
 
+    // Columns hang off a Plan, never off the organization directly. Older
+    // organizations predate Plan; getOrCreateDefaultPlan adopts their columns
+    // on first use (services/plan.service.ts).
+    const plan = await tx.plan.create({
+      data: { organizationId: organization.id, name: DEFAULT_PLAN_NAME, sortOrder: 0 },
+      select: { id: true },
+    });
+
     await tx.group.createMany({
       data: DEFAULT_GROUPS.map((group) => ({
         organizationId: organization.id,
+        planId: plan.id,
         name: group.name,
         color: group.color,
         sortOrder: group.sortOrder,

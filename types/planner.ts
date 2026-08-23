@@ -70,18 +70,24 @@ export interface BoardTaskDto {
   updatedAt: string;
 }
 
-export interface BoardGroupDto {
+/** A column's own settings, without its cards. Returned by group mutations. */
+export interface GroupSettingsDto {
   id: string;
   name: string;
   color: string | null;
   icon: string | null;
   wipLimit: number | null;
   sortOrder: number;
+}
+
+export interface BoardGroupDto extends GroupSettingsDto {
   taskItems: BoardTaskDto[];
 }
 
 export interface BoardDto {
   organizationId: string;
+  /** The plan this board belongs to — an organization can hold several. */
+  planId: string;
   groups: BoardGroupDto[];
 }
 
@@ -121,6 +127,51 @@ export interface TaskDetailDto extends BoardTaskDto {
   description: string | null;
   subtasks: SubtaskNodeDto[];
   activities: TaskActivityDto[];
+}
+
+// ─────────────────────────────────────────────
+// Plans and plan groups — GET /api/plans, /api/plan-groups
+// ─────────────────────────────────────────────
+
+/**
+ * One Kanban board. Note the naming: BoardGroupDto/GroupSummaryDto describe a
+ * COLUMN, while PlanGroupDto is the mockup's "กลุ่ม" — a folder of plans.
+ */
+export interface PlanDto {
+  id: string;
+  organizationId: string;
+  planGroupId: string | null;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  sortOrder: number;
+}
+
+/** A column chip on a plan card in the group overview. */
+export interface PlanColumnSummaryDto {
+  id: string;
+  name: string;
+  color: string | null;
+  taskCount: number;
+}
+
+/** A plan plus the progress counters the sidebar and group overview render. */
+export interface PlanSummaryDto extends PlanDto {
+  taskCount: number;
+  doneCount: number;
+  completionPct: number;
+  columns: PlanColumnSummaryDto[];
+}
+
+/** A folder of plans — the mockup's "กลุ่มของฉัน". */
+export interface PlanGroupDto {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  icon: string | null;
+  sortOrder: number;
+  planCount: number;
 }
 
 // ─────────────────────────────────────────────

@@ -11,6 +11,7 @@ import { arcjetAPI, handleArcjetDecision } from '@/lib/server/arcjet-config';
 import { apiSuccess, apiUnauthorized, apiRateLimited, apiInternalError } from '@/lib/server/api-response';
 import { resolveBoardActor } from '@/lib/server/board-actor';
 import { getBoard } from '@/services/board.service';
+import { getOrCreateDefaultPlan } from '@/services/plan.service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +23,10 @@ export async function GET(request: NextRequest) {
     if (!session?.user) return apiUnauthorized();
 
     const { organizationId } = await resolveBoardActor(session.user);
-    const board = await getBoard(organizationId);
+    // No planId in the URL yet — the board is whichever plan the organization
+    // resolves to by default (and gets provisioned on first use).
+    const plan = await getOrCreateDefaultPlan(organizationId);
+    const board = await getBoard(organizationId, plan.id);
 
     return apiSuccess(board);
   } catch (error) {

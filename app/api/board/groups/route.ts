@@ -20,6 +20,7 @@ import {
 } from '@/lib/server/api-response';
 import { resolveBoardActor } from '@/lib/server/board-actor';
 import { createGroup, listGroups } from '@/services/board.service';
+import { getOrCreateDefaultPlan } from '@/services/plan.service';
 
 const CreateGroupSchema = z.object({
   name: z.string().trim().min(1, 'name is required').max(60, 'name is too long'),
@@ -38,7 +39,8 @@ export async function GET(request: NextRequest) {
     if (!session?.user) return apiUnauthorized();
 
     const { organizationId } = await resolveBoardActor(session.user);
-    const groups = await listGroups(organizationId);
+    const plan = await getOrCreateDefaultPlan(organizationId);
+    const groups = await listGroups(organizationId, plan.id);
 
     return apiSuccess(groups);
   } catch (error) {
@@ -67,7 +69,8 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return apiZodError(parsed.error);
 
     const { organizationId } = await resolveBoardActor(session.user);
-    const group = await createGroup(organizationId, parsed.data.name, parsed.data.color ?? null);
+    const plan = await getOrCreateDefaultPlan(organizationId);
+    const group = await createGroup(organizationId, plan.id, parsed.data.name, parsed.data.color ?? null);
 
     return apiCreated(group);
   } catch (error) {

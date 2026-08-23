@@ -236,7 +236,7 @@ describe('getBoard', () => {
       },
     ] as never);
 
-    const result = await getBoard('org-1');
+    const result = await getBoard('org-1', 'plan-1');
 
     expect(result.organizationId).toBe('org-1');
     expect(result.groups).toHaveLength(1);
@@ -261,11 +261,11 @@ describe('listGroups', () => {
       { id: 'group-1', name: 'Todo', color: null, sortOrder: 0 },
     ] as never);
 
-    const result = await listGroups('org-1');
+    const result = await listGroups('org-1', 'plan-1');
 
     expect(result).toEqual([{ id: 'group-1', name: 'Todo', color: null, sortOrder: 0 }]);
     expect(prismaMock.group.findMany).toHaveBeenCalledWith({
-      where: { organizationId: 'org-1' },
+      where: { organizationId: 'org-1', planId: 'plan-1' },
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true, color: true, sortOrder: true },
     });
@@ -290,7 +290,7 @@ describe('createGroup', () => {
     prismaMock.group.findFirst.mockResolvedValue({ sortOrder: 2 } as never);
     prismaMock.group.create.mockResolvedValue(CREATED_GROUP as never);
 
-    const result = await createGroup('org-1', 'In Progress', null);
+    const result = await createGroup('org-1', 'plan-1', 'In Progress', null);
 
     expect(result.taskItems).toEqual([]);
     expect(prismaMock.group.create).toHaveBeenCalledWith(
@@ -308,7 +308,7 @@ describe('createGroup', () => {
     prismaMock.group.findFirst.mockResolvedValue(null);
     prismaMock.group.create.mockResolvedValue({ ...CREATED_GROUP, sortOrder: 0 } as never);
 
-    await createGroup('org-1', 'Todo', null);
+    await createGroup('org-1', 'plan-1', 'Todo', null);
 
     expect(prismaMock.group.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ sortOrder: 0 }) })
@@ -324,14 +324,14 @@ describe('createGroup', () => {
       })
     );
 
-    await expect(createGroup('org-1', 'Todo', null)).rejects.toThrow('Duplicate entry');
+    await expect(createGroup('org-1', 'plan-1', 'Todo', null)).rejects.toThrow('Duplicate entry');
   });
 
   it('re-throws non-unique-constraint database errors untouched', async () => {
     prismaMock.group.findFirst.mockResolvedValue(null);
     prismaMock.group.create.mockRejectedValue(new Error('connection reset'));
 
-    await expect(createGroup('org-1', 'Todo', null)).rejects.toThrow('connection reset');
+    await expect(createGroup('org-1', 'plan-1', 'Todo', null)).rejects.toThrow('connection reset');
   });
 });
 

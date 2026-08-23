@@ -21,7 +21,7 @@ export function SubtaskCheckedBy({ isDone, name, avatarUrl, checkedAt }: Subtask
   // A plain `title` rather than components/ui/tooltip.tsx on purpose: that
   // component wraps each instance in its own TooltipProvider, which would mean
   // one provider per checklist row.
-  if (!isDone || !name) {
+  if (!isDone) {
     return (
       <span
         className="h-4 w-4 shrink-0 rounded-full border border-dashed border-border-subtle"
@@ -30,6 +30,10 @@ export function SubtaskCheckedBy({ isDone, name, avatarUrl, checkedAt }: Subtask
       />
     );
   }
+
+  // Ticked, but the server's snapshot hasn't landed yet (optimistic update):
+  // render nothing rather than the "not done" marker.
+  if (!name) return null;
 
   const when = checkedAt ? formatRelativeTime(checkedAt) : null;
 

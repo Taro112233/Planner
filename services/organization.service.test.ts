@@ -48,6 +48,7 @@ describe('getOrCreateDefaultOrganization', () => {
       firstName: 'Bob',
       lastName: 'Builder',
     } as never);
+    prismaMock.plan.create.mockResolvedValue({ id: 'plan-new' } as never);
     prismaMock.group.createMany.mockResolvedValue({ count: 3 } as never);
 
     const result = await getOrCreateDefaultOrganization('user-2', 'Bob Builder');
@@ -62,9 +63,17 @@ describe('getOrCreateDefaultOrganization', () => {
         data: expect.objectContaining({ organizationId: 'org-new', firstName: 'Bob', lastName: 'Builder', role: 'OWNER' }),
       })
     );
+    // Columns hang off the plan, never off the organization directly.
+    expect(prismaMock.plan.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ organizationId: 'org-new', sortOrder: 0 }),
+      })
+    );
     expect(prismaMock.group.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.arrayContaining([expect.objectContaining({ name: 'To Do' })]),
+        data: expect.arrayContaining([
+          expect.objectContaining({ name: 'To Do', planId: 'plan-new' }),
+        ]),
       })
     );
   });
