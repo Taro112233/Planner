@@ -1,6 +1,6 @@
 // This file is auto-generated. Do not edit manually.
 // Edit files in prisma/schemas/ directory instead.
-// Last generated: 2026-08-23T13:48:49.034Z
+// Last generated: 2026-08-24T17:40:46.101Z
 
 generator client {
   provider        = "prisma-client-js"
@@ -208,6 +208,8 @@ model OrganizationUser {
   // Membership is soft-left via status/leftAt so historical relations survive.
   user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
 
+  planGroupsOwned   PlanGroup[]       @relation("PlanGroupOwner")
+  planGroupMembers  PlanGroupMember[] @relation("PlanGroupMembership")
   taskItemsCreated TaskItem[]     @relation("TaskItemCreator")
   taskItemsDeleted TaskItem[]     @relation("TaskItemDeletedBy")
   taskAssignments  TaskAssignee[] @relation("TaskAssigneeUser")
@@ -240,8 +242,8 @@ model OrganizationUser {
 // group is PlanGroup. See Instruction-group.md §1.
 
 /**
- * A folder of plans. Membership is not modeled yet — every member of the
- * organization sees every group (Instruction-group.md §7).
+ * A folder of plans, joined by code the way an MS Teams team is: the owner
+ * generates a code and can switch joining on and off at any time.
  */
 model PlanGroup {
   id             String @id @default(cuid())
@@ -253,17 +255,64 @@ model PlanGroup {
   icon        String? // Lucide/custom icon name
   sortOrder   Int     @default(0)
 
+  /**
+   * Human-typeable invite code, unique across every organization because
+   * someone joining has only the code — no workspace context. Null means one
+   * has never been generated; regenerating replaces it, which invalidates any
+   * code already shared.
+   */
+  joinCode String? @unique
+  /** Off by default: a code only works while the owner is accepting joins. */
+  joinCodeEnabled Boolean @default(false)
+
+  /** The member who created the group, and who may manage the join code. */
+  ownerId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Restrict, like TaskItem.creator: memberships are soft-left (status =
+  // LEFT), never hard-deleted, and SetNull cannot be used on a composite key
+  // whose organizationId is required.
+  owner        OrganizationUser? @relation("PlanGroupOwner", fields: [ownerId, organizationId], references: [id, organizationId], onDelete: Restrict)
   plans        Plan[]
+  members      PlanGroupMember[]
 
   @@unique([organizationId, name])
   // Composite tenant key used by Plan to prevent cross-org relations.
   @@unique([id, organizationId])
   @@index([organizationId, sortOrder])
+  @@index([joinCode])
   @@map("plan_groups")
+}
+
+enum PlanGroupRole {
+  OWNER
+  MEMBER
+}
+
+/**
+ * Who is in a group. Joining by code adds the user to the owner's
+ * Organization first (as a MEMBER) and then to the group — the same order MS
+ * Teams uses: you land in the workspace, then in the team.
+ */
+model PlanGroupMember {
+  id             String @id @default(cuid())
+  organizationId String
+  planGroupId    String
+
+  organizationUserId String
+  role               PlanGroupRole @default(MEMBER)
+
+  joinedAt DateTime @default(now())
+
+  planGroup PlanGroup        @relation(fields: [planGroupId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  member    OrganizationUser @relation("PlanGroupMembership", fields: [organizationUserId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([planGroupId, organizationUserId])
+  @@index([organizationId, organizationUserId])
+  @@map("plan_group_members")
 }
 
 /**
@@ -425,6 +474,18 @@ enum ActivityAction {
   SUBTASK_UNCHECKED
   SUBTASK_MOVED
   SUBTASK_DELETED
+
+  // Structural events. These have no TaskItem, which is why taskItemId and
+  // taskItemTitleSnapshot below are nullable; the column or plan name goes in
+  // targetTitle instead.
+  GROUP_CREATED
+  GROUP_RENAMED
+  GROUP_RECOLORED
+  GROUP_DELETED
+  GROUP_REORDERED
+  PLAN_CREATED
+  PLAN_RENAMED
+  PLAN_DELETED
 }
 
 // ─────────────────────────────────────────────
@@ -593,8 +654,9 @@ model TaskActivity {
   organizationId String
 
   // Historical identifiers intentionally have no TaskItem/Subtask FK so the
-  // activity survives deletion of its target.
-  taskItemId String
+  // activity survives deletion of its target. Null for structural events
+  // (GROUP_*/PLAN_*), which describe a column or plan rather than a card.
+  taskItemId String?
   subtaskId  String?
   batchId    String  @default(cuid())
 
@@ -612,7 +674,7 @@ model TaskActivity {
   actorRoleSnapshot   OrganizationRole
 
   action                ActivityAction
-  taskItemTitleSnapshot String
+  taskItemTitleSnapshot String?
   targetTitle           String?
   /// Expected shape: { before?: {...}, after?: {...}, context?: {...} }
   changes               Json?          @db.JsonB

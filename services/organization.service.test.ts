@@ -7,7 +7,12 @@ import { describe, it, expect } from 'vitest';
 import '@/tests/prisma-mock';
 import { prismaMock } from '@/tests/prisma-mock';
 
-import { getOrCreateDefaultOrganization, listOrganizationMembers } from './organization.service';
+import {
+  getOrCreateDefaultOrganization,
+  listOrganizationMembers,
+  listUserWorkspaces,
+  resolveActiveOrganization,
+} from './organization.service';
 
 // ─────────────────────────────────────────────
 // getOrCreateDefaultOrganization
@@ -119,5 +124,118 @@ describe('listOrganizationMembers', () => {
     const result = await listOrganizationMembers('org-empty');
 
     expect(result).toEqual([]);
+  });
+});
+
+
+// ─────────────────────────────────────────────
+// listUserWorkspaces
+// ─────────────────────────────────────────────
+
+describe('listUserWorkspaces', () => {
+  it('flattens every active membership into a switchable workspace', async () => {
+    prismaMock.organizationUser.findMany.mockResolvedValue([
+      {
+        id: 'ou-1',
+        role: 'OWNER',
+        organization: { id: 'org-1', name: 'My Workspace', slug: 'org-1' },
+      },
+      {
+        id: 'ou-2',
+        role: 'MEMBER',
+        organization: { id: 'org-2', name: 'Joined Workspace', slug: 'org-2' },
+      },
+    ] as never);
+
+    const result = await listUserWorkspaces('user-1');
+
+    expect(result).toEqual([
+      {
+        organizationId: 'org-1',
+        organizationUserId: 'ou-1',
+        name: 'My Workspace',
+        slug: 'org-1',
+        role: 'OWNER',
+      },
+      {
+        organizationId: 'org-2',
+        organizationUserId: 'ou-2',
+        name: 'Joined Workspace',
+        slug: 'org-2',
+        role: 'MEMBER',
+      },
+    ]);
+  });
+
+  it('excludes memberships the user has left', async () => {
+    prismaMock.organizationUser.findMany.mockResolvedValue([] as never);
+
+    await listUserWorkspaces('user-1');
+
+    expect(prismaMock.organizationUser.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user-1', status: 'ACTIVE' } })
+    );
+  });
+});
+
+// ─────────────────────────────────────────────
+// resolveActiveOrganization
+// ─────────────────────────────────────────────
+
+describe('resolveActiveOrganization', () => {
+  const MEMBERSHIP = {
+    id: 'ou-2',
+    organizationId: 'org-2',
+    role: 'MEMBER',
+    firstName: 'Ada',
+    lastName: 'Lovelace',
+  };
+
+  it('acts in the requested workspace when the membership is active', async () => {
+    prismaMock.organizationUser.findFirst.mockResolvedValue(MEMBERSHIP as never);
+
+    const result = await resolveActiveOrganization('user-1', 'Ada Lovelace', 'org-2');
+
+    expect(result.organizationId).toBe('org-2');
+    expect(prismaMock.organizationUser.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'user-1', organizationId: 'org-2', status: 'ACTIVE' },
+      })
+    );
+  });
+
+  it('falls back to the default workspace for a stale cookie', async () => {
+    // First lookup (the requested org) misses; the fallback path then finds
+    // the user's own earliest membership.
+    prismaMock.organizationUser.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: 'ou-1',
+        organizationId: 'org-1',
+        role: 'OWNER',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+      } as never);
+
+    const result = await resolveActiveOrganization('user-1', 'Ada Lovelace', 'org-gone');
+
+    expect(result.organizationId).toBe('org-1');
+  });
+
+  it('skips the membership check entirely when no workspace is requested', async () => {
+    prismaMock.organizationUser.findFirst.mockResolvedValue({
+      id: 'ou-1',
+      organizationId: 'org-1',
+      role: 'OWNER',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+    } as never);
+
+    await resolveActiveOrganization('user-1', 'Ada Lovelace', null);
+
+    expect(prismaMock.organizationUser.findFirst).toHaveBeenCalledTimes(1);
+    expect(prismaMock.organizationUser.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user-1', status: 'ACTIVE' } })
+    );
   });
 });

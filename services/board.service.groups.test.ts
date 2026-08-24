@@ -197,9 +197,11 @@ describe('deleteGroup', () => {
 
     await deleteGroup('org-1', 'group-1', 'group-2', ACTOR);
 
-    expect(prismaMock.taskActivity.create).toHaveBeenCalledTimes(2);
     const rows = prismaMock.taskActivity.create.mock.calls.map((call) => call[0].data);
-    expect(rows.every((row) => row.action === 'TASK_MOVED')).toBe(true);
+    // One row per moved card, plus the GROUP_DELETED row for the column itself.
+    expect(rows.filter((row) => row.action === 'TASK_MOVED')).toHaveLength(2);
+    expect(rows.filter((row) => row.action === 'GROUP_DELETED')).toHaveLength(1);
+    // One user action, so the whole set shares a batchId.
     expect(new Set(rows.map((row) => row.batchId)).size).toBe(1);
   });
 
@@ -227,11 +229,16 @@ describe('deleteGroup', () => {
     expect(prismaMock.group.delete).toHaveBeenCalledWith({ where: { id: 'group-1' } });
   });
 
-  it('deletes an empty column without writing any activity', async () => {
+  it('logs only the column removal when there are no cards to move', async () => {
     const result = await deleteGroup('org-1', 'group-1', 'group-2', ACTOR);
 
     expect(result.movedTaskCount).toBe(0);
-    expect(prismaMock.taskActivity.create).not.toHaveBeenCalled();
+    expect(prismaMock.taskActivity.create).toHaveBeenCalledTimes(1);
+    const activity = prismaMock.taskActivity.create.mock.calls[0][0].data;
+    expect(activity).toMatchObject({ action: 'GROUP_DELETED', targetTitle: 'To Do' });
+    // Structural events describe a column, not a card — hence the nullable
+    // taskItemId on the model.
+    expect('taskItemId' in activity).toBe(false);
     expect(prismaMock.group.delete).toHaveBeenCalled();
   });
 

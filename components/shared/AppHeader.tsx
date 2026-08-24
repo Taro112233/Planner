@@ -45,7 +45,11 @@ export function AppHeader() {
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/not-found" ||
-    pathname.startsWith("/board")
+    pathname.startsWith("/board") ||
+    pathname.startsWith("/plans") ||
+    pathname.startsWith("/groups") ||
+    pathname.startsWith("/home") ||
+    pathname.startsWith("/my-tasks")
   ) {
     return null;
   }

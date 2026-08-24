@@ -32,7 +32,17 @@ export type ActivityActionValue =
   | 'SUBTASK_CHECKED'
   | 'SUBTASK_UNCHECKED'
   | 'SUBTASK_MOVED'
-  | 'SUBTASK_DELETED';
+  | 'SUBTASK_DELETED'
+  // Structural events: these describe a column or plan, so they carry no
+  // taskItemId — the name lives in targetTitle.
+  | 'GROUP_CREATED'
+  | 'GROUP_RENAMED'
+  | 'GROUP_RECOLORED'
+  | 'GROUP_DELETED'
+  | 'GROUP_REORDERED'
+  | 'PLAN_CREATED'
+  | 'PLAN_RENAMED'
+  | 'PLAN_DELETED';
 
 /** A single organization member assigned to a TaskItem. */
 export interface TaskAssigneeDto {
@@ -130,6 +140,60 @@ export interface TaskDetailDto extends BoardTaskDto {
 }
 
 // ─────────────────────────────────────────────
+// Dashboard — GET /api/my-tasks, /api/home
+// ─────────────────────────────────────────────
+
+/** The mockup's three due windows: เลยกำหนด/วันนี้ · สัปดาห์นี้ · ถัดไป. */
+export type DueBucketKey = 'overdue' | 'week' | 'later';
+
+/** A card as it appears on a cross-plan list, carrying its board context. */
+export interface MyTaskDto {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  priority: TaskPriority;
+  subtaskTotal: number;
+  subtaskDone: number;
+  groupName: string;
+  groupColor: string | null;
+  planId: string | null;
+  planName: string;
+}
+
+export interface MyTasksDto {
+  overdue: MyTaskDto[];
+  week: MyTaskDto[];
+  later: MyTaskDto[];
+  openCount: number;
+  doneCount: number;
+}
+
+export interface HomeSummaryDto {
+  myOpenCount: number;
+  myOverdueCount: number;
+  teamOpenCount: number;
+  checkedTodayCount: number;
+  dueSoon: MyTaskDto[];
+  activities: TaskActivityDto[];
+}
+
+// ─────────────────────────────────────────────
+// Workspaces — GET /api/workspaces
+// ─────────────────────────────────────────────
+
+/**
+ * An organization the signed-in user belongs to. Users get one of their own on
+ * first sign-in and pick up others by redeeming a group join code.
+ */
+export interface WorkspaceDto {
+  organizationId: string;
+  organizationUserId: string;
+  name: string;
+  slug: string;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+}
+
+// ─────────────────────────────────────────────
 // Plans and plan groups — GET /api/plans, /api/plan-groups
 // ─────────────────────────────────────────────
 
@@ -172,6 +236,38 @@ export interface PlanGroupDto {
   icon: string | null;
   sortOrder: number;
   planCount: number;
+}
+
+/** A group's invite-code state, shown only to its owner. */
+export interface PlanGroupJoinSettingsDto {
+  id: string;
+  joinCode: string | null;
+  joinCodeEnabled: boolean;
+}
+
+/** What POST /api/plan-groups/join answers with. */
+export interface PlanGroupJoinResultDto {
+  planGroupId: string;
+  planGroupName: string;
+  organizationId: string;
+  /** True when the caller was already in the group — the call is idempotent. */
+  alreadyMember: boolean;
+}
+
+/** A member row on the group overview, with their open workload. */
+export interface PlanGroupMemberDto extends OrganizationMemberDto {
+  openTaskCount: number;
+}
+
+/** Everything GET /api/plan-groups/[id]/overview returns. */
+export interface PlanGroupOverviewDto {
+  planGroup: PlanGroupDto;
+  /** Owner-only: null for everyone else, so the code never leaves the owner. */
+  joinSettings: PlanGroupJoinSettingsDto | null;
+  isOwner: boolean;
+  plans: PlanSummaryDto[];
+  members: PlanGroupMemberDto[];
+  activities: TaskActivityDto[];
 }
 
 // ─────────────────────────────────────────────

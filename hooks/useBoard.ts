@@ -43,7 +43,11 @@ export interface UseBoardReturn {
   applyTaskUpdate: (task: TaskDetailDto) => void;
 }
 
-export function useBoard(): UseBoardReturn {
+/**
+ * @param planId Board to load. Omitted → the organization's default plan,
+ *   which the API provisions on first use.
+ */
+export function useBoard(planId?: string): UseBoardReturn {
   const [board, setBoard] = useState<BoardDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +66,9 @@ export function useBoard(): UseBoardReturn {
       if (!hasLoadedRef.current) setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/board', { credentials: 'include' });
+      const response = await fetch(planId ? `/api/board?planId=${planId}` : '/api/board', {
+        credentials: 'include',
+      });
       const data = await response.json();
 
       if (!response.ok || !data.success) {
@@ -76,7 +82,7 @@ export function useBoard(): UseBoardReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [planId]);
 
   useEffect(() => {
     fetchBoard();
@@ -153,10 +159,10 @@ export function useBoard(): UseBoardReturn {
 
   const addGroup = useCallback(
     async (name: string, color?: GroupColorKey) => {
-      const created = await mutate<{ name: string; color?: string }>('/api/board/groups', {
-        method: 'POST',
-        body: { name, color },
-      });
+      const created = await mutate<{ name: string; color?: string }>(
+        planId ? `/api/board/groups?planId=${planId}` : '/api/board/groups',
+        { method: 'POST', body: { name, color } }
+      );
       if (!created) return false;
 
       setBoard((prev) =>
@@ -164,7 +170,7 @@ export function useBoard(): UseBoardReturn {
       );
       return true;
     },
-    [mutate]
+    [mutate, planId]
   );
 
   /**
@@ -214,10 +220,10 @@ export function useBoard(): UseBoardReturn {
         return groups.length === prev.groups.length ? { ...prev, groups } : prev;
       });
 
-      const updated = await mutate<{ groupIds: string[] }>('/api/board/groups/reorder', {
-        method: 'PATCH',
-        body: { groupIds: orderedGroupIds },
-      });
+      const updated = await mutate<{ groupIds: string[] }>(
+        planId ? `/api/board/groups/reorder?planId=${planId}` : '/api/board/groups/reorder',
+        { method: 'PATCH', body: { groupIds: orderedGroupIds } }
+      );
 
       if (!updated) {
         await fetchBoard();
@@ -225,7 +231,7 @@ export function useBoard(): UseBoardReturn {
       }
       return true;
     },
-    [mutate, fetchBoard]
+    [mutate, fetchBoard, planId]
   );
 
   /**

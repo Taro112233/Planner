@@ -34,6 +34,8 @@ model OrganizationUser {
   // Membership is soft-left via status/leftAt so historical relations survive.
   user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
 
+  planGroupsOwned   PlanGroup[]       @relation("PlanGroupOwner")
+  planGroupMembers  PlanGroupMember[] @relation("PlanGroupMembership")
   taskItemsCreated TaskItem[]     @relation("TaskItemCreator")
   taskItemsDeleted TaskItem[]     @relation("TaskItemDeletedBy")
   taskAssignments  TaskAssignee[] @relation("TaskAssigneeUser")

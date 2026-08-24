@@ -67,8 +67,8 @@ export async function PATCH(
     if (!parsed.success) return apiZodError(parsed.error);
 
     const { groupId } = await params;
-    const { organizationId } = await resolveBoardActor(session.user);
-    const group = await updateGroup(organizationId, groupId, parsed.data);
+    const { organizationId, actor } = await resolveBoardActor(session.user);
+    const group = await updateGroup(organizationId, groupId, parsed.data, actor);
 
     return apiSuccess(group, 'Column updated');
   } catch (error) {

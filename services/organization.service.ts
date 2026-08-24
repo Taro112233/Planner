@@ -12,7 +12,7 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/server/prisma';
 import type { OrganizationRole } from '@prisma/client';
-import type { OrganizationMemberDto } from '@/types/planner';
+import type { OrganizationMemberDto, WorkspaceDto } from '@/types/planner';
 import { DEFAULT_PLAN_NAME } from '@/services/plan.service';
 
 // ─────────────────────────────────────────────
@@ -154,4 +154,67 @@ export async function listOrganizationMembers(
     avatarUrl: member.user.image ?? null,
     role: member.role,
   }));
+}
+
+/**
+ * Every workspace the user can act in — their own, plus any they joined with a
+ * group code (services/plan.service.ts joinPlanGroupByCode).
+ */
+export async function listUserWorkspaces(userId: string): Promise<WorkspaceDto[]> {
+  const memberships = await prisma.organizationUser.findMany({
+    where: { userId, status: 'ACTIVE' },
+    orderBy: { joinedAt: 'asc' },
+    select: {
+      id: true,
+      role: true,
+      organization: { select: { id: true, name: true, slug: true } },
+    },
+  });
+
+  return memberships.map((membership) => ({
+    organizationId: membership.organization.id,
+    organizationUserId: membership.id,
+    name: membership.organization.name,
+    slug: membership.organization.slug,
+    role: membership.role,
+  }));
+}
+
+/**
+ * The organization a request acts in.
+ *
+ * `requestedOrganizationId` is the workspace the user last switched to. It is
+ * only honoured when they still hold an ACTIVE membership there — a stale
+ * cookie, or one pointing at a workspace they left, silently falls back to
+ * their default rather than failing the request.
+ */
+export async function resolveActiveOrganization(
+  userId: string,
+  displayName: string,
+  requestedOrganizationId?: string | null
+): Promise<DefaultOrganizationContext> {
+  if (requestedOrganizationId) {
+    const membership = await prisma.organizationUser.findFirst({
+      where: { userId, organizationId: requestedOrganizationId, status: 'ACTIVE' },
+      select: {
+        id: true,
+        organizationId: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+
+    if (membership) {
+      return {
+        organizationId: membership.organizationId,
+        organizationUserId: membership.id,
+        role: membership.role,
+        firstName: membership.firstName,
+        lastName: membership.lastName,
+      };
+    }
+  }
+
+  return getOrCreateDefaultOrganization(userId, displayName);
 }

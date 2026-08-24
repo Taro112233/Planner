@@ -37,6 +37,22 @@ export function formatActivity(activity: TaskActivityDto): string {
       return `moved a subtask${target}`;
     case 'SUBTASK_DELETED':
       return `deleted a subtask${target}`;
+    case 'GROUP_CREATED':
+      return `เพิ่มหัวข้อ${target}`;
+    case 'GROUP_RENAMED':
+      return `เปลี่ยนชื่อหัวข้อเป็น${target}`;
+    case 'GROUP_RECOLORED':
+      return `เปลี่ยนสีหัวข้อ${target}`;
+    case 'GROUP_DELETED':
+      return `ลบหัวข้อ${target}`;
+    case 'GROUP_REORDERED':
+      return 'จัดเรียงหัวข้อใหม่';
+    case 'PLAN_CREATED':
+      return `สร้างแผนงาน${target}`;
+    case 'PLAN_RENAMED':
+      return `เปลี่ยนชื่อแผนงานเป็น${target}`;
+    case 'PLAN_DELETED':
+      return `ลบแผนงาน${target}`;
     default:
       // ActivityActionValue is exhausted above, so `action` narrows to never
       // here. Kept as a runtime guard for enum values added server-side before

@@ -3,7 +3,7 @@
 // columns, and opens the task detail panel on card click.
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -32,7 +32,14 @@ import { TaskDetailModal } from '@/components/TaskDetail';
 import type { TaskPriority } from '@/types/planner';
 import type { GroupColorKey } from '@/lib/shared/group-colors';
 
-export function BoardPage() {
+interface BoardPageProps {
+  /** Which plan's board to render. Omitted → the organization's default. */
+  planId?: string;
+  /** Shown in the topbar; defaults to "Board" for the default-plan route. */
+  planName?: string;
+}
+
+export function BoardPage({ planId, planName }: BoardPageProps = {}) {
   const {
     board,
     loading,
@@ -45,10 +52,21 @@ export function BoardPage() {
     reorderGroups,
     deleteGroup,
     applyTaskUpdate,
-  } = useBoard();
+  } = useBoard(planId);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  // Two pieces of state on purpose. Unmounting a Radix Dialog in the same
+  // commit that sets `open` to false skips its close sequence, which can leave
+  // `pointer-events: none` on <body> — the whole app, sidebar included, then
+  // ignores clicks. Keeping the panel mounted while it closes also restores
+  // its slide-out animation.
+  const [panelTaskId, setPanelTaskId] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [view, setView] = useState<BoardViewMode>('board');
+
+  const openTaskPanel = useCallback((taskId: string) => {
+    setPanelTaskId(taskId);
+    setPanelOpen(true);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -182,7 +200,7 @@ export function BoardPage() {
   return (
     <div className="min-h-screen bg-surface-primary">
       <PlannerTopbar
-        title="Board"
+        title={planName ?? 'Board'}
         subtitle={subtitle}
         action={<NewTaskButton groups={board.groups} onAddTask={handleAddTask} />}
       />
@@ -207,7 +225,7 @@ export function BoardPage() {
                   siblings={board.groups.filter((g) => g.id !== group.id)}
                   canMoveLeft={index > 0}
                   canMoveRight={index < board.groups.length - 1}
-                  onOpenTask={setOpenTaskId}
+                  onOpenTask={openTaskPanel}
                   onAddTask={handleAddTask}
                   onRenameGroup={handleRenameGroup}
                   onRecolorGroup={handleRecolorGroup}
@@ -225,19 +243,19 @@ export function BoardPage() {
           </DndContext>
         )}
 
-        {view === 'list' && <BoardListView board={board} onOpenTask={setOpenTaskId} />}
-        {view === 'calendar' && <BoardCalendarView board={board} onOpenTask={setOpenTaskId} />}
-        {view === 'timeline' && <BoardTimelineView board={board} onOpenTask={setOpenTaskId} />}
+        {view === 'list' && <BoardListView board={board} onOpenTask={openTaskPanel} />}
+        {view === 'calendar' && <BoardCalendarView board={board} onOpenTask={openTaskPanel} />}
+        {view === 'timeline' && <BoardTimelineView board={board} onOpenTask={openTaskPanel} />}
       </div>
 
-      {openTaskId && (
+      {panelTaskId && (
         <TaskDetailModal
-          taskId={openTaskId}
-          open={!!openTaskId}
-          onOpenChange={(open) => !open && setOpenTaskId(null)}
+          taskId={panelTaskId}
+          open={panelOpen}
+          onOpenChange={setPanelOpen}
           onTaskUpdated={applyTaskUpdate}
           onTaskDeleted={() => {
-            setOpenTaskId(null);
+            setPanelOpen(false);
             void refetch();
           }}
           groups={board.groups}

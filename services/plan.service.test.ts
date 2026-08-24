@@ -20,6 +20,10 @@ import {
   createPlanGroup,
   updatePlanGroup,
   deletePlanGroup,
+  regenerateJoinCode,
+  setJoinCodeEnabled,
+  joinPlanGroupByCode,
+  normalizeJoinCode,
   DEFAULT_PLAN_NAME,
 } from './plan.service';
 
@@ -303,9 +307,10 @@ describe('updatePlan', () => {
 
 describe('deletePlan', () => {
   beforeEach(() => {
-    prismaMock.plan.findFirst.mockResolvedValue({ id: 'plan-1' } as never);
+    prismaMock.plan.findFirst.mockResolvedValue({ id: 'plan-1', name: 'แผนงานหลัก' } as never);
     prismaMock.plan.count.mockResolvedValue(2);
     prismaMock.plan.update.mockResolvedValue(PLAN_ROW as never);
+    mockTransactionPassthrough();
   });
 
   it('soft-deletes without touching the columns or cards inside', async () => {
@@ -350,16 +355,41 @@ describe('listPlanGroups', () => {
 });
 
 describe('createPlanGroup', () => {
-  it('appends after the last group and starts with no plans', async () => {
+  beforeEach(() => {
     prismaMock.planGroup.findFirst.mockResolvedValue({ sortOrder: 1 } as never);
     prismaMock.planGroup.create.mockResolvedValue(PLAN_GROUP_ROW as never);
+    mockTransactionPassthrough();
+  });
 
+  it('appends after the last group and starts with no plans', async () => {
     const result = await createPlanGroup('org-1', 'การตลาด Q3', 'blue');
 
     expect(result.planCount).toBe(0);
     expect(prismaMock.planGroup.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ sortOrder: 2 }) })
     );
+  });
+
+  it('records the creator as owner and first member', async () => {
+    await createPlanGroup('org-1', 'การตลาด Q3', 'blue', 'ou-owner');
+
+    expect(prismaMock.planGroup.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ ownerId: 'ou-owner' }) })
+    );
+    expect(prismaMock.planGroupMember.create).toHaveBeenCalledWith({
+      data: {
+        organizationId: 'org-1',
+        planGroupId: 'pg-1',
+        organizationUserId: 'ou-owner',
+        role: 'OWNER',
+      },
+    });
+  });
+
+  it('creates no membership row when no owner is supplied', async () => {
+    await createPlanGroup('org-1', 'การตลาด Q3', null);
+
+    expect(prismaMock.planGroupMember.create).not.toHaveBeenCalled();
   });
 
   it('throws "Duplicate entry" when the name collides', async () => {
@@ -419,5 +449,218 @@ describe('deletePlanGroup', () => {
 
     await expect(deletePlanGroup('org-1', 'ghost')).rejects.toThrow('Plan group not found');
     expect(prismaMock.planGroup.delete).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────
+// Join codes
+// ─────────────────────────────────────────────
+
+describe('normalizeJoinCode', () => {
+  it('accepts any case, spacing and punctuation the user types', () => {
+    expect(normalizeJoinCode('k3f8qpmr')).toBe('K3F8-QPMR');
+    expect(normalizeJoinCode('  K3F8-QPMR ')).toBe('K3F8-QPMR');
+    expect(normalizeJoinCode('k3f8 qpmr')).toBe('K3F8-QPMR');
+  });
+
+  it('leaves a wrong-length code unformatted so the lookup simply misses', () => {
+    expect(normalizeJoinCode('abc')).toBe('ABC');
+  });
+});
+
+describe('regenerateJoinCode', () => {
+  beforeEach(() => {
+    prismaMock.planGroup.findFirst.mockResolvedValue({
+      id: 'pg-1',
+      ownerId: 'ou-owner',
+      joinCode: null,
+    } as never);
+    prismaMock.planGroup.update.mockResolvedValue({
+      id: 'pg-1',
+      joinCode: 'K3F8-QPMR',
+      joinCodeEnabled: true,
+    } as never);
+  });
+
+  it('issues a grouped code and opens joining in one step', async () => {
+    const result = await regenerateJoinCode('org-1', 'pg-1', 'ou-owner');
+
+    expect(result.joinCodeEnabled).toBe(true);
+    const { data } = prismaMock.planGroup.update.mock.calls[0][0];
+    expect(data.joinCodeEnabled).toBe(true);
+    expect(String(data.joinCode)).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  });
+
+  it('never issues a code containing look-alike characters', async () => {
+    await regenerateJoinCode('org-1', 'pg-1', 'ou-owner');
+
+    const code = String(prismaMock.planGroup.update.mock.calls[0][0].data.joinCode);
+    expect(code).not.toMatch(/[01OIL]/);
+  });
+
+  it('refuses a member who is not the owner', async () => {
+    await expect(regenerateJoinCode('org-1', 'pg-1', 'ou-other')).rejects.toThrow(
+      'Only the group owner can manage the join code'
+    );
+    expect(prismaMock.planGroup.update).not.toHaveBeenCalled();
+  });
+
+  it('lets a member claim an ownerless group rather than locking everyone out', async () => {
+    prismaMock.planGroup.findFirst.mockResolvedValue({
+      id: 'pg-1',
+      ownerId: null,
+      joinCode: null,
+    } as never);
+
+    await regenerateJoinCode('org-1', 'pg-1', 'ou-claimer');
+
+    expect(prismaMock.planGroup.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { ownerId: 'ou-claimer' } })
+    );
+  });
+
+  it('throws "Plan group not found" for a group outside the organization', async () => {
+    prismaMock.planGroup.findFirst.mockResolvedValue(null);
+
+    await expect(regenerateJoinCode('org-1', 'ghost', 'ou-owner')).rejects.toThrow(
+      'Plan group not found'
+    );
+  });
+});
+
+describe('setJoinCodeEnabled', () => {
+  it('closes joining without discarding the code', async () => {
+    prismaMock.planGroup.findFirst.mockResolvedValue({
+      id: 'pg-1',
+      ownerId: 'ou-owner',
+      joinCode: 'K3F8-QPMR',
+    } as never);
+    prismaMock.planGroup.update.mockResolvedValue({
+      id: 'pg-1',
+      joinCode: 'K3F8-QPMR',
+      joinCodeEnabled: false,
+    } as never);
+
+    const result = await setJoinCodeEnabled('org-1', 'pg-1', 'ou-owner', false);
+
+    expect(result.joinCode).toBe('K3F8-QPMR');
+    expect(prismaMock.planGroup.update.mock.calls[0][0].data).toEqual({
+      joinCodeEnabled: false,
+    });
+  });
+
+  it('refuses to open a group that has no code yet', async () => {
+    prismaMock.planGroup.findFirst.mockResolvedValue({
+      id: 'pg-1',
+      ownerId: 'ou-owner',
+      joinCode: null,
+    } as never);
+
+    await expect(setJoinCodeEnabled('org-1', 'pg-1', 'ou-owner', true)).rejects.toThrow(
+      'Generate a join code first'
+    );
+  });
+});
+
+describe('joinPlanGroupByCode', () => {
+  const GROUP = {
+    id: 'pg-1',
+    name: 'การตลาด Q3',
+    organizationId: 'org-owner',
+    joinCodeEnabled: true,
+  };
+
+  beforeEach(() => {
+    prismaMock.planGroup.findUnique.mockResolvedValue(GROUP as never);
+    prismaMock.organizationUser.findFirst.mockResolvedValue(null);
+    prismaMock.organizationUser.create.mockResolvedValue({
+      id: 'ou-joiner',
+      status: 'ACTIVE',
+    } as never);
+    prismaMock.planGroupMember.findFirst.mockResolvedValue(null);
+    mockTransactionPassthrough();
+  });
+
+  it("adds the joiner to the owner's organization, then to the group", async () => {
+    const result = await joinPlanGroupByCode('user-2', 'Ada Lovelace', 'k3f8qpmr');
+
+    expect(result).toEqual({
+      planGroupId: 'pg-1',
+      planGroupName: 'การตลาด Q3',
+      organizationId: 'org-owner',
+      alreadyMember: false,
+    });
+    // The workspace is the tenant boundary — without membership there they
+    // could not read a single card.
+    expect(prismaMock.organizationUser.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          organizationId: 'org-owner',
+          userId: 'user-2',
+          role: 'MEMBER',
+        }),
+      })
+    );
+    expect(prismaMock.planGroupMember.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ planGroupId: 'pg-1', role: 'MEMBER' }),
+      })
+    );
+  });
+
+  it('looks the group up by the normalized code', async () => {
+    await joinPlanGroupByCode('user-2', 'Ada', 'k3f8 qpmr');
+
+    expect(prismaMock.planGroup.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { joinCode: 'K3F8-QPMR' } })
+    );
+  });
+
+  it('reuses an existing membership instead of duplicating it', async () => {
+    prismaMock.organizationUser.findFirst.mockResolvedValue({
+      id: 'ou-joiner',
+      status: 'ACTIVE',
+    } as never);
+    prismaMock.planGroupMember.findFirst.mockResolvedValue({ id: 'pgm-1' } as never);
+
+    const result = await joinPlanGroupByCode('user-2', 'Ada', 'K3F8-QPMR');
+
+    expect(result.alreadyMember).toBe(true);
+    expect(prismaMock.organizationUser.create).not.toHaveBeenCalled();
+    expect(prismaMock.planGroupMember.create).not.toHaveBeenCalled();
+  });
+
+  it('reactivates someone who had left the workspace', async () => {
+    prismaMock.organizationUser.findFirst.mockResolvedValue({
+      id: 'ou-joiner',
+      status: 'LEFT',
+    } as never);
+
+    await joinPlanGroupByCode('user-2', 'Ada', 'K3F8-QPMR');
+
+    expect(prismaMock.organizationUser.update).toHaveBeenCalledWith({
+      where: { id: 'ou-joiner' },
+      data: { status: 'ACTIVE', leftAt: null },
+    });
+  });
+
+  it('throws "Invalid join code" for an unknown code', async () => {
+    prismaMock.planGroup.findUnique.mockResolvedValue(null);
+
+    await expect(joinPlanGroupByCode('user-2', 'Ada', 'NOPE-NOPE')).rejects.toThrow(
+      'Invalid join code'
+    );
+  });
+
+  it('refuses a group that has closed joining', async () => {
+    prismaMock.planGroup.findUnique.mockResolvedValue({
+      ...GROUP,
+      joinCodeEnabled: false,
+    } as never);
+
+    await expect(joinPlanGroupByCode('user-2', 'Ada', 'K3F8-QPMR')).rejects.toThrow(
+      'This group is not accepting new members'
+    );
+    expect(prismaMock.planGroupMember.create).not.toHaveBeenCalled();
   });
 });

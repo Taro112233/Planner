@@ -13,6 +13,7 @@ import { arcjetAPI, handleArcjetDecision } from '@/lib/server/arcjet-config';
 import {
   apiSuccess,
   apiUnauthorized,
+  apiNotFound,
   apiRateLimited,
   apiBadRequest,
   apiZodError,
@@ -20,7 +21,23 @@ import {
 } from '@/lib/server/api-response';
 import { resolveBoardActor } from '@/lib/server/board-actor';
 import { reorderGroups } from '@/services/board.service';
-import { getOrCreateDefaultPlan } from '@/services/plan.service';
+import { getOrCreateDefaultPlan, getPlan } from '@/services/plan.service';
+
+/**
+ * The plan a board request acts on: `?planId=` when the caller names one,
+ * otherwise the organization's default (provisioned on first use).
+ *
+ * @throws Error('Plan not found') — an unknown or foreign planId
+ */
+async function resolvePlanId(request: NextRequest, organizationId: string): Promise<string> {
+  const requested = new URL(request.url).searchParams.get('planId');
+  if (requested) {
+    const plan = await getPlan(organizationId, requested);
+    return plan.id;
+  }
+  const plan = await getOrCreateDefaultPlan(organizationId);
+  return plan.id;
+}
 
 const ReorderGroupsSchema = z.object({
   /** The COMPLETE ordering — Group.sortOrder is an Int, so every row is renumbered. */
@@ -46,12 +63,15 @@ export async function PATCH(request: NextRequest) {
     const parsed = ReorderGroupsSchema.safeParse(body);
     if (!parsed.success) return apiZodError(parsed.error);
 
-    const { organizationId } = await resolveBoardActor(session.user);
-    const plan = await getOrCreateDefaultPlan(organizationId);
-    const groups = await reorderGroups(organizationId, plan.id, parsed.data.groupIds);
+    const { organizationId, actor } = await resolveBoardActor(session.user);
+    const planId = await resolvePlanId(request, organizationId);
+    const groups = await reorderGroups(organizationId, planId, parsed.data.groupIds, actor);
 
     return apiSuccess(groups, 'Columns reordered');
   } catch (error) {
+    if (error instanceof Error && error.message === 'Plan not found') {
+      return apiNotFound('Plan not found');
+    }
     if (
       error instanceof Error &&
       error.message === 'Group order must include every column exactly once'

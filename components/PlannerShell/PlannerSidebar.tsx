@@ -1,93 +1,170 @@
 // components/PlannerShell/PlannerSidebar.tsx
-// Left nav for the planner app shell. "Board" and "Trash" are wired up today
-// — later phases (Home, My Tasks, Inbox, workspace Groups, multiple Plans,
-// Reports, Audit log, Members, Templates) will add their own nav sections
-// here once those pages exist. No dead links are rendered in the meantime.
+// Left nav, following the mockup's structure (Planner v2.dc.html): a search
+// box, the main destinations, "กลุ่มของฉัน", "แผนงาน", "การจัดการ", and the
+// user chip in the footer.
+//
+// Destinations whose pages don't exist yet (การแจ้งเตือน, รายงาน,
+// ประวัติตรวจสอบ, สมาชิก & สิทธิ์, เทมเพลต) render as disabled rows so
+// the rail matches the mockup without shipping dead links — the same call the
+// search box already makes.
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
+import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Search, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Search, UserPlus } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
   SidebarHeader,
   SidebarInput,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { usePlanNav } from '@/hooks/usePlanNav';
+import { NavStaticSection, type StaticNavItem } from './NavStaticSection';
+import { PlanNavSection, planGroupToNavItem, planToNavItem } from './PlanNavSection';
+import { JoinGroupDialog } from './JoinGroupDialog';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 function initials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
 }
 
+// Colors mirror the mockup's chips (#007aff, #ff9500, #ff2d55, …) via the
+// accent-independent group palette, so they hold up in both themes.
+const MAIN_NAV: StaticNavItem[] = [
+  { key: 'home', label: 'หน้าแรก', icon: '⌂', color: 'var(--color-group-blue)', href: '/home' },
+  {
+    key: 'mine',
+    label: 'งานของฉัน',
+    icon: '✓',
+    color: 'var(--color-group-orange)',
+    href: '/my-tasks',
+  },
+  { key: 'inbox', label: 'การแจ้งเตือน', icon: '✉', color: 'var(--color-group-pink)' },
+];
+
+const ADMIN_NAV: StaticNavItem[] = [
+  { key: 'reports', label: 'รายงาน', icon: '▤', color: 'var(--color-group-teal)' },
+  { key: 'audit', label: 'ประวัติตรวจสอบ', icon: '◔', color: 'var(--color-group-purple)' },
+  { key: 'members', label: 'สมาชิก & สิทธิ์', icon: '⚿', color: 'var(--color-group-slate)' },
+  { key: 'templates', label: 'เทมเพลต', icon: '⌗', color: 'var(--color-group-green)' },
+  {
+    key: 'trash',
+    label: 'ถังขยะ',
+    icon: '🗑',
+    color: 'var(--color-group-slate)',
+    href: '/board/trash',
+  },
+];
+
 export function PlannerSidebar() {
   const pathname = usePathname();
   const { user } = useCurrentUser();
+  const {
+    planGroups,
+    plans,
+    createPlan,
+    createPlanGroup,
+    setPlanGroup,
+    deletePlan,
+    deletePlanGroup,
+    refetch,
+  } = usePlanNav();
+  const [joining, setJoining] = useState(false);
 
   return (
-    // AppHeader is hidden on /board routes (see components/shared/AppHeader.tsx),
+    // AppHeader is hidden on planner routes (components/shared/AppHeader.tsx),
     // so the rail uses the primitive's default full-height fixed positioning.
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="relative px-1 py-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-content-tertiary pointer-events-none" />
-          <SidebarInput placeholder="Search tasks…" className="pl-8" disabled />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-content-tertiary" />
+          <SidebarInput placeholder="ค้นหางาน / งานย่อย" className="pl-8" disabled />
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith('/board') && !pathname.startsWith('/board/trash')}
-                  tooltip="Board"
-                >
-                  <Link href="/board">
-                    <LayoutGrid />
-                    <span>Board</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith('/board/trash')} tooltip="Trash">
-                  <Link href="/board/trash">
-                    <Trash2 />
-                    <span>Trash</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <NavStaticSection items={MAIN_NAV} activeHref={pathname} />
+
+        <PlanNavSection
+          label="กลุ่มของฉัน"
+          addLabel="สร้างกลุ่มใหม่"
+          addPlaceholder="ชื่อกลุ่ม แล้วกด Enter"
+          variant="chip"
+          items={planGroups.map(planGroupToNavItem)}
+          activeHref={pathname}
+          onAdd={async (name) => {
+            const ok = await createPlanGroup(name);
+            if (!ok) toast.error('สร้างกลุ่มไม่สำเร็จ');
+          }}
+          onDelete={async (planGroupId) => {
+            const ok = await deletePlanGroup(planGroupId);
+            toast[ok ? 'success' : 'error'](
+              ok ? 'ลบกลุ่มแล้ว — แผนงานข้างในยังอยู่' : 'ลบกลุ่มไม่สำเร็จ'
+            );
+          }}
+          footer={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-full justify-start gap-2 px-2 text-xs text-content-tertiary group-data-[collapsible=icon]:hidden"
+              onClick={() => setJoining(true)}
+            >
+              <UserPlus size={13} />
+              เข้าร่วมด้วยรหัส
+            </Button>
+          }
+        />
+
+        <PlanNavSection
+          label="แผนงาน"
+          addLabel="สร้างแผนงานใหม่"
+          addPlaceholder="ชื่อแผนงาน แล้วกด Enter"
+          variant="square"
+          items={plans.map(planToNavItem)}
+          activeHref={pathname}
+          moveTargets={planGroups}
+          onAdd={async (name) => {
+            const created = await createPlan(name);
+            if (!created) toast.error('สร้างแผนงานไม่สำเร็จ');
+          }}
+          onMoveToGroup={async (planId, planGroupId) => {
+            const ok = await setPlanGroup(planId, planGroupId);
+            if (!ok) toast.error('ย้ายแผนงานไม่สำเร็จ');
+          }}
+          onDelete={async (planId) => {
+            const ok = await deletePlan(planId);
+            if (!ok) toast.error('ลบแผนงานไม่สำเร็จ');
+          }}
+        />
+
+        <SidebarSeparator />
+
+        <NavStaticSection label="การจัดการ" items={ADMIN_NAV} activeHref={pathname} />
       </SidebarContent>
 
       <SidebarFooter>
         {user && (
-          <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
-            <Avatar size="sm">
-              {user.image && <AvatarImage src={user.image} alt={user.fullName} />}
-              <AvatarFallback className="text-[10px]">
-                {initials(user.firstName, user.lastName)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-              <p className="text-xs font-medium text-content-primary truncate">{user.fullName}</p>
-              <p className="text-[10px] text-content-tertiary truncate">{user.role}</p>
-            </div>
-          </div>
+          <WorkspaceSwitcher
+            userName={user.fullName}
+            userRole={user.role}
+            userImage={user.image}
+            initials={initials(user.firstName, user.lastName)}
+          />
         )}
       </SidebarFooter>
+
+      <JoinGroupDialog
+        open={joining}
+        onOpenChange={setJoining}
+        onJoined={() => {
+          void refetch();
+        }}
+      />
     </Sidebar>
   );
 }

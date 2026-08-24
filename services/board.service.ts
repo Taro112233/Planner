@@ -223,6 +223,73 @@ function computeInsertPosition(
   return prev!.plus(next!).div(2);
 }
 
+/**
+ * The plan a card belongs to, denormalized onto every TaskActivity row.
+ *
+ * TaskActivity deliberately has no TaskItem FK (prisma/Instruction-task.md §7)
+ * so history survives deletion — which also means an activity row cannot be
+ * joined back to its plan. Without this snapshot the group overview could not
+ * list activity across a group's plans.
+ */
+async function resolvePlanSnapshot(
+  organizationId: string,
+  taskItemId: string
+): Promise<{ planId: string | null; planNameSnapshot: string | null }> {
+  const row = await prisma.taskItem.findFirst({
+    where: { id: taskItemId, organizationId },
+    select: { group: { select: { planId: true, plan: { select: { name: true } } } } },
+  });
+
+  return {
+    planId: row?.group?.planId ?? null,
+    planNameSnapshot: row?.group?.plan?.name ?? null,
+  };
+}
+
+/**
+ * Record a structural event — one about a column or a plan rather than a card.
+ *
+ * These carry no taskItemId (the schema makes it nullable for exactly this
+ * reason); the column or plan name goes in targetTitle, and planId is what the
+ * group overview filters on.
+ */
+async function writeStructuralActivity(
+  tx: Prisma.TransactionClient,
+  params: {
+    organizationId: string;
+    planId: string | null;
+    planNameSnapshot: string | null;
+    actor: ActorInput;
+    action: 'GROUP_CREATED' | 'GROUP_RENAMED' | 'GROUP_RECOLORED' | 'GROUP_DELETED' | 'GROUP_REORDERED';
+    targetTitle: string;
+    changes?: Prisma.InputJsonValue;
+    batchId?: string;
+  }
+): Promise<void> {
+  await tx.taskActivity.create({
+    data: {
+      organizationId: params.organizationId,
+      planId: params.planId,
+      planNameSnapshot: params.planNameSnapshot,
+      ...(params.batchId ? { batchId: params.batchId } : {}),
+      actorId: params.actor.organizationUserId,
+      actorUserIdSnapshot: params.actor.userId,
+      actorNameSnapshot: params.actor.name,
+      actorAvatarSnapshot: params.actor.avatarUrl,
+      actorRoleSnapshot: params.actor.role,
+      action: params.action,
+      targetTitle: params.targetTitle,
+      ...(params.changes ? { changes: params.changes } : {}),
+    },
+  });
+}
+
+/** Plan name for a structural event, resolved from the plan itself. */
+async function resolvePlanName(planId: string): Promise<string | null> {
+  const plan = await prisma.plan.findUnique({ where: { id: planId }, select: { name: true } });
+  return plan?.name ?? null;
+}
+
 function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 }
@@ -297,7 +364,8 @@ export async function createGroup(
   organizationId: string,
   planId: string,
   name: string,
-  color: string | null
+  color: string | null,
+  actor?: ActorInput
 ): Promise<BoardGroupDto> {
   const last = await prisma.group.findFirst({
     where: { organizationId, planId },
@@ -316,6 +384,20 @@ export async function createGroup(
       },
       select: GROUP_SETTINGS_SELECT,
     });
+
+    if (actor) {
+      const planNameSnapshot = await resolvePlanName(planId);
+      await prisma.$transaction((tx) =>
+        writeStructuralActivity(tx, {
+          organizationId,
+          planId,
+          planNameSnapshot,
+          actor,
+          action: 'GROUP_CREATED',
+          targetTitle: group.name,
+        })
+      );
+    }
 
     return { ...group, taskItems: [] };
   } catch (error) {
@@ -355,11 +437,12 @@ export async function listGroups(
 export async function updateGroup(
   organizationId: string,
   groupId: string,
-  patch: { name?: string; color?: string | null; wipLimit?: number | null }
+  patch: { name?: string; color?: string | null; wipLimit?: number | null },
+  actor?: ActorInput
 ): Promise<GroupSettingsDto> {
   const existing = await prisma.group.findFirst({
     where: { id: groupId, organizationId },
-    select: { id: true },
+    select: { id: true, name: true, color: true, planId: true, plan: { select: { name: true } } },
   });
   if (!existing) throw new Error(GROUP_NOT_FOUND);
 
@@ -369,11 +452,55 @@ export async function updateGroup(
   if (patch.wipLimit !== undefined) data.wipLimit = patch.wipLimit;
 
   try {
-    return await prisma.group.update({
+    const updated = await prisma.group.update({
       where: { id: groupId },
       data,
       select: GROUP_SETTINGS_SELECT,
     });
+
+    // A rename and a recolour are separate events, so the feed reads as what
+    // actually happened rather than a generic "updated". A WIP-limit change is
+    // deliberately not logged — it is a display setting, not board structure.
+    if (actor) {
+      const renamed = patch.name !== undefined && patch.name !== existing.name;
+      const recoloured = patch.color !== undefined && patch.color !== existing.color;
+
+      if (renamed || recoloured) {
+        const batchId = crypto.randomUUID();
+        await prisma.$transaction(async (tx) => {
+          if (renamed) {
+            await writeStructuralActivity(tx, {
+              organizationId,
+              planId: existing.planId,
+              planNameSnapshot: existing.plan?.name ?? null,
+              actor,
+              action: 'GROUP_RENAMED',
+              targetTitle: updated.name,
+              changes: { field: 'name', before: existing.name, after: updated.name },
+              batchId,
+            });
+          }
+          if (recoloured) {
+            await writeStructuralActivity(tx, {
+              organizationId,
+              planId: existing.planId,
+              planNameSnapshot: existing.plan?.name ?? null,
+              actor,
+              action: 'GROUP_RECOLORED',
+              targetTitle: updated.name,
+              changes: {
+                field: 'color',
+                before: existing.color ?? null,
+                after: updated.color ?? null,
+              },
+              batchId,
+            });
+          }
+        });
+      }
+    }
+
+    return updated;
   } catch (error) {
     if (isUniqueConstraintError(error)) throw new Error('Duplicate entry');
     throw error;
@@ -464,6 +591,7 @@ export async function deleteGroup(
         data: {
           organizationId,
           taskItemId: card.id,
+          ...(await resolvePlanSnapshot(organizationId, card.id)),
           batchId,
           actorId: actor.organizationUserId,
           actorUserIdSnapshot: actor.userId,
@@ -481,6 +609,17 @@ export async function deleteGroup(
         },
       });
     }
+
+    await writeStructuralActivity(tx, {
+      organizationId,
+      planId: source.planId,
+      planNameSnapshot: null,
+      actor,
+      action: 'GROUP_DELETED',
+      targetTitle: source.name,
+      changes: { movedTo: target.name, movedTaskCount: cards.length },
+      batchId,
+    });
 
     // Last, against a column that is now empty.
     await tx.group.delete({ where: { id: groupId } });
@@ -502,7 +641,8 @@ export async function deleteGroup(
 export async function reorderGroups(
   organizationId: string,
   planId: string,
-  orderedGroupIds: string[]
+  orderedGroupIds: string[],
+  actor?: ActorInput
 ): Promise<GroupSettingsDto[]> {
   const existing = await prisma.group.findMany({
     where: { organizationId, planId },
@@ -521,6 +661,21 @@ export async function reorderGroups(
       prisma.group.update({ where: { id }, data: { sortOrder: index } })
     )
   );
+
+  if (actor) {
+    const planNameSnapshot = await resolvePlanName(planId);
+    await prisma.$transaction((tx) =>
+      writeStructuralActivity(tx, {
+        organizationId,
+        planId,
+        planNameSnapshot,
+        actor,
+        action: 'GROUP_REORDERED',
+        targetTitle: planNameSnapshot ?? 'Board',
+        changes: { columnCount: orderedGroupIds.length },
+      })
+    );
+  }
 
   return prisma.group.findMany({
     where: { organizationId, planId },
@@ -580,6 +735,7 @@ export async function createTask(
       data: {
         organizationId,
         taskItemId: created.id,
+        ...(await resolvePlanSnapshot(organizationId, created.id)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -646,6 +802,7 @@ export async function moveTask(
       data: {
         organizationId,
         taskItemId: taskId,
+        ...(await resolvePlanSnapshot(organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -691,6 +848,7 @@ export async function updateTaskTitle(
       data: {
         organizationId,
         taskItemId: taskId,
+        ...(await resolvePlanSnapshot(organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -731,6 +889,7 @@ export async function updateTaskDescription(
       data: {
         organizationId,
         taskItemId: taskId,
+        ...(await resolvePlanSnapshot(organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -771,6 +930,7 @@ export async function updateTaskPriority(
       data: {
         organizationId,
         taskItemId: taskId,
+        ...(await resolvePlanSnapshot(organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -814,6 +974,7 @@ export async function updateTaskDates(
       data: {
         organizationId,
         taskItemId: taskId,
+        ...(await resolvePlanSnapshot(organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -976,6 +1137,7 @@ export async function setSubtaskDone(
       data: {
         organizationId,
         taskItemId,
+        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
         subtaskId,
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
@@ -1026,6 +1188,7 @@ export async function assignTask(
         data: {
           organizationId,
           taskItemId: taskId,
+          ...(await resolvePlanSnapshot(organizationId, taskId)),
           actorId: actor.organizationUserId,
           actorUserIdSnapshot: actor.userId,
           actorNameSnapshot: actor.name,
@@ -1075,6 +1238,7 @@ export async function unassignTask(
       data: {
         organizationId,
         taskItemId: taskId,
+        ...(await resolvePlanSnapshot(organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1190,6 +1354,7 @@ export async function addSubtask(
       data: {
         organizationId,
         taskItemId,
+        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
         subtaskId: parentSubtaskId ?? undefined,
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
@@ -1239,6 +1404,7 @@ export async function renameSubtask(
       data: {
         organizationId,
         taskItemId,
+        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
         subtaskId,
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
@@ -1309,6 +1475,7 @@ export async function deleteSubtask(
       data: {
         organizationId,
         taskItemId,
+        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1359,6 +1526,7 @@ export async function deleteTask(
       data: {
         organizationId,
         taskItemId,
+        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1399,6 +1567,7 @@ export async function restoreTask(
       data: {
         organizationId,
         taskItemId,
+        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1438,6 +1607,7 @@ export async function permanentlyDeleteTask(
       data: {
         organizationId,
         taskItemId,
+        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,

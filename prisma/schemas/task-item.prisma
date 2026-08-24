@@ -32,6 +32,18 @@ enum ActivityAction {
   SUBTASK_UNCHECKED
   SUBTASK_MOVED
   SUBTASK_DELETED
+
+  // Structural events. These have no TaskItem, which is why taskItemId and
+  // taskItemTitleSnapshot below are nullable; the column or plan name goes in
+  // targetTitle instead.
+  GROUP_CREATED
+  GROUP_RENAMED
+  GROUP_RECOLORED
+  GROUP_DELETED
+  GROUP_REORDERED
+  PLAN_CREATED
+  PLAN_RENAMED
+  PLAN_DELETED
 }
 
 // ─────────────────────────────────────────────
@@ -200,8 +212,9 @@ model TaskActivity {
   organizationId String
 
   // Historical identifiers intentionally have no TaskItem/Subtask FK so the
-  // activity survives deletion of its target.
-  taskItemId String
+  // activity survives deletion of its target. Null for structural events
+  // (GROUP_*/PLAN_*), which describe a column or plan rather than a card.
+  taskItemId String?
   subtaskId  String?
   batchId    String  @default(cuid())
 
@@ -219,7 +232,7 @@ model TaskActivity {
   actorRoleSnapshot   OrganizationRole
 
   action                ActivityAction
-  taskItemTitleSnapshot String
+  taskItemTitleSnapshot String?
   targetTitle           String?
   /// Expected shape: { before?: {...}, after?: {...}, context?: {...} }
   changes               Json?          @db.JsonB
