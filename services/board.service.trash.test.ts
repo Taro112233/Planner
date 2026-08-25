@@ -46,6 +46,7 @@ const FULL_TASK_ROW = {
   updatedAt: new Date('2024-01-02T00:00:00Z'),
   assignees: [],
   badges: [],
+  subtasks: [],
 };
 
 beforeEach(() => {

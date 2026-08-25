@@ -73,6 +73,24 @@ const TASK_ITEM_SELECT = {
       badge: { select: { id: true, name: true, color: true } },
     },
   },
+  // Board cards render their checklist inline (mockup: the card shows the
+  // nested subtasks, not just a counter), so the tree travels with every card
+  // rather than only with the detail payload.
+  subtasks: {
+    orderBy: { position: 'asc' },
+    select: {
+      id: true,
+      parentSubtaskId: true,
+      title: true,
+      isDone: true,
+      depth: true,
+      childTotal: true,
+      childDone: true,
+      checkedByNameSnapshot: true,
+      checkedByAvatarSnapshot: true,
+      checkedAt: true,
+    },
+  },
 } satisfies Prisma.TaskItemSelect;
 
 const TASK_DETAIL_SELECT = {
@@ -95,20 +113,6 @@ interface SubtaskRow {
   checkedByAvatarSnapshot?: string | null;
   checkedAt?: Date | null;
 }
-
-/** Columns every subtask read needs to build a SubtaskNodeDto. */
-const SUBTASK_NODE_SELECT = {
-  id: true,
-  parentSubtaskId: true,
-  title: true,
-  isDone: true,
-  depth: true,
-  childTotal: true,
-  childDone: true,
-  checkedByNameSnapshot: true,
-  checkedByAvatarSnapshot: true,
-  checkedAt: true,
-} satisfies Prisma.SubtaskSelect;
 
 /** Columns every activity read needs to build a TaskActivityDto. */
 const ACTIVITY_SELECT = {
@@ -166,6 +170,7 @@ function serializeBoardTask(task: TaskItemWithRelations): BoardTaskDto {
       name: b.badge.name,
       color: b.badge.color,
     })),
+    subtasks: buildSubtaskTree(task.subtasks ?? []),
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
   };
@@ -1014,24 +1019,18 @@ async function assembleTaskDetail(
   organizationId: string,
   task: TaskDetailRow
 ): Promise<TaskDetailDto> {
-  const [subtaskRows, activityRows] = await Promise.all([
-    prisma.subtask.findMany({
-      where: { taskItemId: task.id, organizationId },
-      orderBy: { position: 'asc' },
-      select: SUBTASK_NODE_SELECT,
-    }),
-    prisma.taskActivity.findMany({
-      where: { taskItemId: task.id, organizationId },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      select: ACTIVITY_SELECT,
-    }),
-  ]);
+  const activityRows = await prisma.taskActivity.findMany({
+    where: { taskItemId: task.id, organizationId },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: ACTIVITY_SELECT,
+  });
 
+  // serializeBoardTask already assembled the subtask tree from the shared card
+  // projection, so there is no second subtask query here.
   return {
     ...serializeBoardTask(task),
     description: task.description,
-    subtasks: buildSubtaskTree(subtaskRows),
     activities: activityRows.map(serializeActivity),
   };
 }

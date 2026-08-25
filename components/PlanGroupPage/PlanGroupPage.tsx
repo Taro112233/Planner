@@ -27,7 +27,7 @@ interface PlanGroupPageProps {
 
 export function PlanGroupPage({ planGroupId }: PlanGroupPageProps) {
   const { overview, loading, error, refetch } = usePlanGroupOverview(planGroupId);
-  const { plans, setPlanGroup, createPlan } = usePlanNav();
+  const { setPlanGroup, createPlan } = usePlanNav();
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
   // Seeded from the overview payload, then owned locally once the owner acts.
@@ -37,7 +37,7 @@ export function PlanGroupPage({ planGroupId }: PlanGroupPageProps) {
 
   if (!overview) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="px-5 py-6">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error ?? 'Failed to load group'}</AlertDescription>
@@ -47,8 +47,6 @@ export function PlanGroupPage({ planGroupId }: PlanGroupPageProps) {
   }
 
   const { planGroup, members, activities } = overview;
-  // Plans the user could still pull into this group.
-  const joinable = plans.filter((plan) => plan.planGroupId !== planGroupId);
 
   const handleCreatePlan = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -69,15 +67,6 @@ export function PlanGroupPage({ planGroupId }: PlanGroupPageProps) {
     }
   };
 
-  const handleJoin = async (planId: string) => {
-    const ok = await setPlanGroup(planId, planGroupId);
-    if (!ok) {
-      toast.error('ย้ายแผนงานเข้ากลุ่มไม่สำเร็จ');
-      return;
-    }
-    await refetch();
-  };
-
   const handleLeave = async (planId: string) => {
     const ok = await setPlanGroup(planId, null);
     if (!ok) {
@@ -94,7 +83,7 @@ export function PlanGroupPage({ planGroupId }: PlanGroupPageProps) {
         subtitle={`${overview.plans.length} แผนงาน · ${members.length} สมาชิก`}
       />
 
-      <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="space-y-6 px-5 py-5">
         <section aria-label="แผนงานในกลุ่มนี้" className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
@@ -127,26 +116,6 @@ export function PlanGroupPage({ planGroupId }: PlanGroupPageProps) {
             />
           )}
         </section>
-
-        {joinable.length > 0 && (
-          <section aria-label="ย้ายแผนงานเข้ากลุ่ม" className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
-              ย้ายแผนงานเข้ากลุ่มนี้
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {joinable.map((plan) => (
-                <Button
-                  key={plan.id}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleJoin(plan.id)}
-                >
-                  + {plan.name}
-                </Button>
-              ))}
-            </div>
-          </section>
-        )}
 
         <JoinCodePanel
           planGroupId={planGroupId}

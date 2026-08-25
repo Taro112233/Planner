@@ -23,7 +23,7 @@ import { PRIORITY_STYLES } from './priorityStyles';
 import { TaskDetailBody } from './TaskDetailBody';
 import { TaskTitleEditor } from './TaskTitleEditor';
 import { TaskActivityFeed } from './TaskActivityFeed';
-import type { BoardGroupDto, TaskDetailDto } from '@/types/planner';
+import type { BoardGroupDto, BoardTaskDto, TaskDetailDto } from '@/types/planner';
 
 interface TaskDetailModalProps {
   /** Controls open/closed state — passed by the parent */
@@ -33,6 +33,8 @@ interface TaskDetailModalProps {
   taskId: string;
   /** The board's columns — rendered as clickable status chips */
   groups: BoardGroupDto[];
+  /** The card the board already holds, so the panel opens without a spinner. */
+  initialTask?: BoardTaskDto | null;
   /** Every snapshot, optimistic ones included, so the board can stay in sync. */
   onTaskUpdated?: (updatedTask: TaskDetailDto) => void;
   /** The task was trashed from here; the parent should close and refresh. */
@@ -44,10 +46,11 @@ export function TaskDetailModal({
   onOpenChange,
   taskId,
   groups,
+  initialTask,
   onTaskUpdated,
   onTaskDeleted,
 }: TaskDetailModalProps) {
-  const detail = useTaskDetail(taskId, { onTaskChange: onTaskUpdated });
+  const detail = useTaskDetail(taskId, { onTaskChange: onTaskUpdated, initialTask });
   const { task, loading, error, isPending, updateTitle, deleteTask } = detail;
   const { members } = useOrganizationMembers();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -140,7 +143,7 @@ export function TaskDetailModal({
           )}
 
           {!loading && !task && (
-            <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center">
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 px-5 text-center">
               <AlertCircle size={20} className="text-content-danger" />
               <p className="text-sm text-content-secondary">{error ?? 'Failed to load task'}</p>
             </div>
@@ -149,7 +152,7 @@ export function TaskDetailModal({
           {task && (
             <>
               {/* ── Header ─────────────────────────────────────── */}
-              <div className="shrink-0 border-b border-border-subtle px-6 py-5">
+              <div className="shrink-0 border-b border-border-subtle px-5 py-4">
                 <div className="pr-20">
                   <TaskTitleEditor
                     title={task.title}
@@ -195,7 +198,7 @@ export function TaskDetailModal({
               </div>
 
               {/* ── Scrollable body ─────────────────────────────── */}
-              <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="flex-1 overflow-y-auto px-5 py-4">
                 <TaskDetailBody
                   task={task}
                   detail={detail}
@@ -216,7 +219,7 @@ export function TaskDetailModal({
               </div>
 
               {/* ── Footer ─────────────────────────────────────── */}
-              <div className="shrink-0 border-t border-border-subtle px-6 py-4">
+              <div className="shrink-0 border-t border-border-subtle px-5 py-3">
                 <p className="text-xs text-content-tertiary">
                   Last updated {new Date(task.updatedAt).toLocaleString()}
                 </p>

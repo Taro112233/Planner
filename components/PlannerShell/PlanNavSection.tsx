@@ -155,7 +155,7 @@ export function PlanNavSection({
                       style={{ backgroundColor: resolveGroupColor(item.color) }}
                     />
                   )}
-                  <span className="truncate">{item.name}</span>
+                  <span className="min-w-0 flex-1 truncate">{item.name}</span>
                 </Link>
               </SidebarMenuButton>
 

@@ -18,7 +18,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation } from '@/hooks/useMutation';
-import type { BoardTaskDto, SubtaskNodeDto, TaskDetailDto, TaskPriority } from '@/types/planner';
+import {
+  findSubtask,
+  patchSubtaskTree,
+  removeSubtask,
+  clamp,
+  toggleSubtaskInTask,
+} from '@/lib/shared/subtask-tree';
+import type { BoardTaskDto, TaskDetailDto, TaskPriority } from '@/types/planner';
 
 /**
  * The section a mutation belongs to. Deliberately coarse — one key per UI
@@ -55,48 +62,14 @@ interface RunOptions<TBody> {
   merge?: (prev: TaskDetailDto | null, response: TaskDetailDto) => TaskDetailDto | null;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-/** Rebuild the tree with `patch` applied to the node with `subtaskId`. */
-function patchSubtaskTree(
-  nodes: SubtaskNodeDto[],
-  subtaskId: string,
-  patch: (node: SubtaskNodeDto) => SubtaskNodeDto
-): SubtaskNodeDto[] {
-  return nodes.map((node) => {
-    if (node.id === subtaskId) return patch(node);
-    if (node.children.length === 0) return node;
-    return { ...node, children: patchSubtaskTree(node.children, subtaskId, patch) };
-  });
-}
-
-function findSubtask(
-  nodes: SubtaskNodeDto[],
-  subtaskId: string,
-  parent: SubtaskNodeDto | null = null
-): { node: SubtaskNodeDto; parent: SubtaskNodeDto | null } | null {
-  for (const node of nodes) {
-    if (node.id === subtaskId) return { node, parent };
-    const hit = findSubtask(node.children, subtaskId, node);
-    if (hit) return hit;
-  }
-  return null;
-}
-
-/** Drop a node and, with it, its whole subtree — mirrors the DB cascade. */
-function removeSubtask(nodes: SubtaskNodeDto[], subtaskId: string): SubtaskNodeDto[] {
-  return nodes
-    .filter((node) => node.id !== subtaskId)
-    .map((node) =>
-      node.children.length === 0
-        ? node
-        : { ...node, children: removeSubtask(node.children, subtaskId) }
-    );
-}
-
 export interface UseTaskDetailOptions {
+  /**
+   * The card the caller already holds, used as the starting state so the panel
+   * paints immediately instead of showing a spinner while the detail request
+   * is in flight. Board cards carry everything except description and
+   * activities, which the fetch fills in.
+   */
+  initialTask?: BoardTaskDto | null;
   /**
    * Fired with the fresh task after every *mutation* — including the optimistic
    * patch, so a board card behind an open panel moves at the same moment the
@@ -136,11 +109,21 @@ export interface UseTaskDetailReturn {
   deleteTask: () => Promise<boolean>;
 }
 
+/** Widen a board card into the detail shape the panel renders. */
+function seedFromCard(card: BoardTaskDto | null | undefined): TaskDetailDto | null {
+  if (!card) return null;
+  // description/activities are the only fields a card lacks; the fetch that
+  // follows replaces this snapshot wholesale.
+  return { ...card, description: null, activities: [] };
+}
+
 export function useTaskDetail(
   taskId: string,
   options?: UseTaskDetailOptions
 ): UseTaskDetailReturn {
-  const [task, setTaskState] = useState<TaskDetailDto | null>(null);
+  const [task, setTaskState] = useState<TaskDetailDto | null>(() =>
+    seedFromCard(options?.initialTask)
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<ReadonlySet<TaskPendingScope>>(() => new Set());
@@ -152,7 +135,7 @@ export function useTaskDetail(
    * `fetchTask` must stay keyed on `taskId` alone, or the mount effect below
    * would re-fire on every mutation.
    */
-  const taskRef = useRef<TaskDetailDto | null>(null);
+  const taskRef = useRef<TaskDetailDto | null>(seedFromCard(options?.initialTask));
 
   // Held in a ref, assigned on every render: callers can pass an inline arrow
   // without destabilising `run`, whose identity TaskPageActivity depends on.
@@ -389,41 +372,7 @@ export function useTaskDetail(
       run('subtasks', `/api/board/tasks/${taskId}/subtasks/${subtaskId}`, {
         method: 'PATCH',
         body: { isDone: desiredIsDone },
-        // Mirrors setSubtaskDone: flip this node, move the direct parent's
-        // childDone by one, and the TaskItem counter only for a root subtask
-        // (invariant I6). No cascade, because the service doesn't do one.
-        optimistic: (prev) => {
-          const found = findSubtask(prev.subtasks, subtaskId);
-          if (!found || found.node.isDone === desiredIsDone) return prev;
-
-          const delta = desiredIsDone ? 1 : -1;
-          let subtasks = patchSubtaskTree(prev.subtasks, subtaskId, (node) => ({
-            ...node,
-            isDone: desiredIsDone,
-            // Attribution is server-stamped: cleared on uncheck (invariant
-            // I7), left blank on check until the response lands.
-            checkedByName: null,
-            checkedByAvatarUrl: null,
-            checkedAt: null,
-          }));
-
-          if (found.parent) {
-            const parentId = found.parent.id;
-            subtasks = patchSubtaskTree(subtasks, parentId, (node) => ({
-              ...node,
-              childDone: clamp(node.childDone + delta, 0, node.childTotal),
-            }));
-          }
-
-          return {
-            ...prev,
-            subtasks,
-            subtaskDone:
-              found.node.depth === 0
-                ? clamp(prev.subtaskDone + delta, 0, prev.subtaskTotal)
-                : prev.subtaskDone,
-          };
-        },
+        optimistic: (prev) => toggleSubtaskInTask(prev, subtaskId, desiredIsDone),
       }),
     [run, taskId]
   );

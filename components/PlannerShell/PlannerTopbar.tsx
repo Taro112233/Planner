@@ -26,7 +26,7 @@ export function PlannerTopbar({ title, subtitle, action }: PlannerTopbarProps) {
   const { members } = useOrganizationMembers();
 
   return (
-    <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 py-4 border-b border-border-subtle">
+    <div className="flex items-center gap-3 px-5 py-4 border-b border-border-subtle">
       <SidebarTrigger className="-ml-1 shrink-0" />
 
       <div className="min-w-0">

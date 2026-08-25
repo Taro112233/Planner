@@ -59,6 +59,7 @@ const FULL_TASK_ROW = {
   updatedAt: new Date('2024-01-02T00:00:00Z'),
   assignees: [],
   badges: [],
+  subtasks: [],
 };
 
 beforeEach(() => {
@@ -597,35 +598,38 @@ describe('updateTaskDates', () => {
 
 describe('getTaskDetail', () => {
   it('assembles the flat subtask rows into a depth-2 tree', async () => {
-    prismaMock.subtask.findMany.mockResolvedValue([
-      {
-        id: 'st-root',
-        parentSubtaskId: null,
-        title: 'Root',
-        isDone: false,
-        depth: 0,
-        childTotal: 1,
-        childDone: 0,
-      },
-      {
-        id: 'st-child',
-        parentSubtaskId: 'st-root',
-        title: 'Child',
-        isDone: false,
-        depth: 1,
-        childTotal: 1,
-        childDone: 0,
-      },
-      {
-        id: 'st-grandchild',
-        parentSubtaskId: 'st-child',
-        title: 'Grandchild',
-        isDone: true,
-        depth: 2,
-        childTotal: 0,
-        childDone: 0,
-      },
-    ] as never);
+    prismaMock.taskItem.findFirst.mockResolvedValue({
+      ...FULL_TASK_ROW,
+      subtasks: [
+        {
+          id: 'st-root',
+          parentSubtaskId: null,
+          title: 'Root',
+          isDone: false,
+          depth: 0,
+          childTotal: 1,
+          childDone: 0,
+        },
+        {
+          id: 'st-child',
+          parentSubtaskId: 'st-root',
+          title: 'Child',
+          isDone: false,
+          depth: 1,
+          childTotal: 1,
+          childDone: 0,
+        },
+        {
+          id: 'st-grandchild',
+          parentSubtaskId: 'st-child',
+          title: 'Grandchild',
+          isDone: true,
+          depth: 2,
+          childTotal: 0,
+          childDone: 0,
+        },
+      ],
+    } as never);
     prismaMock.taskActivity.findMany.mockResolvedValue([
       {
         id: 'act-1',
@@ -656,20 +660,23 @@ describe('getTaskDetail', () => {
   });
 
   it('carries the checked-by snapshot and checkedAt onto the tree node', async () => {
-    prismaMock.subtask.findMany.mockResolvedValue([
-      {
-        id: 'st-done',
-        parentSubtaskId: null,
-        title: 'Done root',
-        isDone: true,
-        depth: 0,
-        childTotal: 0,
-        childDone: 0,
-        checkedByNameSnapshot: 'Ada Lovelace',
-        checkedByAvatarSnapshot: 'https://example.test/ada.png',
-        checkedAt: new Date('2024-02-01T08:30:00Z'),
-      },
-    ] as never);
+    prismaMock.taskItem.findFirst.mockResolvedValue({
+      ...FULL_TASK_ROW,
+      subtasks: [
+        {
+          id: 'st-done',
+          parentSubtaskId: null,
+          title: 'Done root',
+          isDone: true,
+          depth: 0,
+          childTotal: 0,
+          childDone: 0,
+          checkedByNameSnapshot: 'Ada Lovelace',
+          checkedByAvatarSnapshot: 'https://example.test/ada.png',
+          checkedAt: new Date('2024-02-01T08:30:00Z'),
+        },
+      ],
+    } as never);
     prismaMock.taskActivity.findMany.mockResolvedValue([] as never);
 
     const result = await getTaskDetail('org-1', 'task-1');
@@ -682,20 +689,23 @@ describe('getTaskDetail', () => {
   });
 
   it('leaves the checked-by fields null for a subtask nobody has ticked', async () => {
-    prismaMock.subtask.findMany.mockResolvedValue([
-      {
-        id: 'st-open',
-        parentSubtaskId: null,
-        title: 'Open root',
-        isDone: false,
-        depth: 0,
-        childTotal: 0,
-        childDone: 0,
-        checkedByNameSnapshot: null,
-        checkedByAvatarSnapshot: null,
-        checkedAt: null,
-      },
-    ] as never);
+    prismaMock.taskItem.findFirst.mockResolvedValue({
+      ...FULL_TASK_ROW,
+      subtasks: [
+        {
+          id: 'st-open',
+          parentSubtaskId: null,
+          title: 'Open root',
+          isDone: false,
+          depth: 0,
+          childTotal: 0,
+          childDone: 0,
+          checkedByNameSnapshot: null,
+          checkedByAvatarSnapshot: null,
+          checkedAt: null,
+        },
+      ],
+    } as never);
     prismaMock.taskActivity.findMany.mockResolvedValue([] as never);
 
     const result = await getTaskDetail('org-1', 'task-1');
@@ -708,20 +718,20 @@ describe('getTaskDetail', () => {
   });
 
   it('selects the checked-by snapshot columns and the activity actor avatar', async () => {
-    prismaMock.subtask.findMany.mockResolvedValue([] as never);
     prismaMock.taskActivity.findMany.mockResolvedValue([] as never);
 
     await getTaskDetail('org-1', 'task-1');
 
-    expect(prismaMock.subtask.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        select: expect.objectContaining({
-          checkedByNameSnapshot: true,
-          checkedByAvatarSnapshot: true,
-          checkedAt: true,
-        }),
-      })
-    );
+    // The checklist rides along with the card projection — no second query.
+    const select = prismaMock.taskItem.findFirst.mock.calls[0][0]?.select as {
+      subtasks: { select: Record<string, boolean> };
+    };
+    expect(select.subtasks.select).toMatchObject({
+      checkedByNameSnapshot: true,
+      checkedByAvatarSnapshot: true,
+      checkedAt: true,
+    });
+    expect(prismaMock.subtask.findMany).not.toHaveBeenCalled();
     expect(prismaMock.taskActivity.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         select: expect.objectContaining({ actorAvatarSnapshot: true }),

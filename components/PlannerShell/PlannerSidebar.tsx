@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePlanNav } from '@/hooks/usePlanNav';
+import type { PlanSummaryDto } from '@/types/planner';
 import { NavStaticSection, type StaticNavItem } from './NavStaticSection';
 import { PlanNavSection, planGroupToNavItem, planToNavItem } from './PlanNavSection';
 import { JoinGroupDialog } from './JoinGroupDialog';
@@ -61,6 +62,23 @@ const ADMIN_NAV: StaticNavItem[] = [
   },
 ];
 
+/**
+ * The group the user is working in, read straight off the URL: /groups/[id],
+ * or the group owning the plan at /plans/[id]. Null everywhere else (home, my
+ * tasks, trash), where the plan list falls back to ungrouped plans.
+ */
+function useActiveGroupId(pathname: string, plans: PlanSummaryDto[]): string | null {
+  const groupMatch = pathname.match(/^\/groups\/([^/]+)/);
+  if (groupMatch) return groupMatch[1];
+
+  const planMatch = pathname.match(/^\/plans\/([^/]+)/);
+  if (planMatch) {
+    return plans.find((plan) => plan.id === planMatch[1])?.planGroupId ?? null;
+  }
+
+  return null;
+}
+
 export function PlannerSidebar() {
   const pathname = usePathname();
   const { user } = useCurrentUser();
@@ -76,6 +94,12 @@ export function PlannerSidebar() {
   } = usePlanNav();
   const [joining, setJoining] = useState(false);
 
+  const activeGroupId = useActiveGroupId(pathname, plans);
+  const activeGroup = planGroups.find((group) => group.id === activeGroupId) ?? null;
+  // Inside a group you see that group's plans; outside it, the ones that
+  // belong to no group at all.
+  const visiblePlans = plans.filter((plan) => plan.planGroupId === activeGroupId);
+
   return (
     // AppHeader is hidden on planner routes (components/shared/AppHeader.tsx),
     // so the rail uses the primitive's default full-height fixed positioning.
@@ -87,7 +111,7 @@ export function PlannerSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="overflow-x-hidden">
         <NavStaticSection items={MAIN_NAV} activeHref={pathname} />
 
         <PlanNavSection
@@ -121,15 +145,17 @@ export function PlannerSidebar() {
         />
 
         <PlanNavSection
-          label="แผนงาน"
+          label={activeGroup ? `แผนงานใน ${activeGroup.name}` : 'แผนงาน'}
           addLabel="สร้างแผนงานใหม่"
           addPlaceholder="ชื่อแผนงาน แล้วกด Enter"
           variant="square"
-          items={plans.map(planToNavItem)}
+          items={visiblePlans.map(planToNavItem)}
           activeHref={pathname}
           moveTargets={planGroups}
           onAdd={async (name) => {
-            const created = await createPlan(name);
+            // A new plan lands in whichever group you are looking at, so the
+            // list you just added to is the list it appears in.
+            const created = await createPlan(name, activeGroupId);
             if (!created) toast.error('สร้างแผนงานไม่สำเร็จ');
           }}
           onMoveToGroup={async (planId, planGroupId) => {

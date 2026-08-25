@@ -29,7 +29,7 @@ export function TaskPageHeader({
 }: TaskPageHeaderProps) {
   return (
     <div className="border-b border-border-subtle">
-      <div className="px-4 sm:px-6 lg:px-8 pt-3">
+      <div className="px-5 pt-3">
         <Link
           href="/board"
           className="inline-flex items-center gap-1.5 text-xs text-content-tertiary hover:text-content-primary transition-colors"
@@ -49,7 +49,7 @@ export function TaskPageHeader({
         }
       />
 
-      <div className="px-4 sm:px-6 lg:px-8 pb-4">
+      <div className="px-5 pb-4">
         <TaskTitleEditor title={title} onSave={onSave} pending={titlePending} variant="page" />
       </div>
     </div>

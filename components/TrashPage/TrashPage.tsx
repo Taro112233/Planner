@@ -25,7 +25,7 @@ export function TrashPage() {
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-5 py-6">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
@@ -52,7 +52,7 @@ export function TrashPage() {
     <div className="min-h-screen bg-surface-primary">
       <PlannerTopbar title="ถังขยะ" subtitle={`${tasks.length} task${tasks.length === 1 ? '' : 's'}`} />
 
-      <div className="px-4 sm:px-6 lg:px-8 py-5">
+      <div className="px-5 py-5">
         {tasks.length === 0 ? (
           <EmptyState
             icon={<Trash2 className="w-16 h-16 text-content-secondary" />}

@@ -15,6 +15,7 @@ import type {
   TaskPriority,
 } from '@/types/planner';
 import type { GroupColorKey } from '@/lib/shared/group-colors';
+import { toggleSubtaskInTask } from '@/lib/shared/subtask-tree';
 
 /** The column settings a caller may patch. Omitted keys stay untouched. */
 export interface GroupPatch {
@@ -39,6 +40,12 @@ export interface UseBoardReturn {
     groupId: string,
     targetGroupId: string
   ) => Promise<{ movedTaskCount: number } | null>;
+  /** Tick a subtask straight from its card, without opening the panel. */
+  toggleSubtask: (
+    taskId: string,
+    subtaskId: string,
+    desiredIsDone: boolean
+  ) => Promise<boolean>;
   /** Merges a task edited elsewhere (e.g. the detail panel) into board state. */
   applyTaskUpdate: (task: TaskDetailDto) => void;
 }
@@ -55,6 +62,9 @@ export function useBoard(planId?: string): UseBoardReturn {
 
   const hasLoadedRef = useRef(false);
   const boardRef = useRef<BoardDto | null>(null);
+  // applyTaskUpdate is declared further down; toggleSubtask reaches it through
+  // this ref rather than forcing a reorder of the file.
+  const applyTaskUpdateRef = useRef<((task: TaskDetailDto) => void) | null>(null);
   useEffect(() => {
     boardRef.current = board;
   }, [board]);
@@ -253,16 +263,59 @@ export function useBoard(planId?: string): UseBoardReturn {
   );
 
   /**
+   * Ticking from the card. Paints the change immediately using the same
+   * counter rules the service applies (lib/shared/subtask-tree.ts), then
+   * reconciles with the task the server returns.
+   */
+  const toggleSubtask = useCallback(
+    async (taskId: string, subtaskId: string, desiredIsDone: boolean) => {
+      const snapshot = boardRef.current;
+
+      setBoard((prev) =>
+        prev
+          ? {
+              ...prev,
+              groups: prev.groups.map((group) => ({
+                ...group,
+                taskItems: group.taskItems.map((task) =>
+                  task.id === taskId
+                    ? toggleSubtaskInTask(task, subtaskId, desiredIsDone)
+                    : task
+                ),
+              })),
+            }
+          : prev
+      );
+
+      const updated = await mutate<{ isDone: boolean }>(
+        `/api/board/tasks/${taskId}/subtasks/${subtaskId}`,
+        { method: 'PATCH', body: { isDone: desiredIsDone } }
+      );
+
+      if (!updated) {
+        // Put back exactly what was on screen before the click.
+        if (snapshot) setBoard(snapshot);
+        else await fetchBoard();
+        return false;
+      }
+
+      // The response carries the server's counters and the checker snapshot.
+      applyTaskUpdateRef.current?.(updated as TaskDetailDto);
+      return true;
+    },
+    [mutate, fetchBoard]
+  );
+
+  /**
    * Folds a TaskDetailDto returned by a panel mutation back into board state.
    * Cheaper and far less disruptive than refetching /api/board, which used to
    * flash the skeleton and remount the very panel that triggered the edit.
    */
   const applyTaskUpdate = useCallback(
     (updated: TaskDetailDto) => {
-      // Board cards are BoardTaskDto — drop the detail-only fields rather than
-      // making every card carry a description, subtask tree and activity log
-      // for the calendar/timeline views to memoize over.
-      const { description: _d, subtasks: _s, activities: _a, ...card } = updated;
+      // Board cards are BoardTaskDto — drop only the detail-only fields. The
+      // subtask tree stays: cards render their checklist inline.
+      const { description: _d, activities: _a, ...card } = updated;
 
       const targetExists = boardRef.current?.groups.some((group) => group.id === card.groupId);
       if (!targetExists) {
@@ -298,6 +351,8 @@ export function useBoard(planId?: string): UseBoardReturn {
     [fetchBoard]
   );
 
+  applyTaskUpdateRef.current = applyTaskUpdate;
+
   return {
     board,
     loading,
@@ -309,6 +364,7 @@ export function useBoard(planId?: string): UseBoardReturn {
     updateGroup,
     reorderGroups,
     deleteGroup,
+    toggleSubtask,
     applyTaskUpdate,
   };
 }

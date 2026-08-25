@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function PlanGroupPageSkeleton() {
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="space-y-6 px-5 py-5">
       <Skeleton className="h-7 w-56" />
       <div className="grid gap-3 sm:grid-cols-2">
         <Skeleton className="h-32 w-full rounded-xl" />

@@ -8,17 +8,15 @@ import type { TaskBadgeDto } from '@/types/planner';
 
 interface TaskBadgeListProps {
   badges: TaskBadgeDto[];
+  /** Skip the section wrapper and heading — the caller already labels it. */
+  bare?: boolean;
 }
 
-export function TaskBadgeList({ badges }: TaskBadgeListProps) {
+export function TaskBadgeList({ badges, bare = false }: TaskBadgeListProps) {
   if (badges.length === 0) return null;
 
-  return (
-    <section aria-label="Badges">
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-content-tertiary">
-        Badges
-      </h2>
-      <div className="flex flex-wrap gap-1.5">
+  const chips = (
+    <div className="flex flex-wrap gap-1.5">
         {badges.map((badge) => (
           <span
             key={badge.id}
@@ -28,7 +26,17 @@ export function TaskBadgeList({ badges }: TaskBadgeListProps) {
             {badge.name}
           </span>
         ))}
-      </div>
+    </div>
+  );
+
+  if (bare) return chips;
+
+  return (
+    <section aria-label="Badges">
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-content-tertiary">
+        Badges
+      </h2>
+      {chips}
     </section>
   );
 }

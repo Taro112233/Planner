@@ -76,6 +76,8 @@ export interface BoardTaskDto {
   subtaskDone: number;
   assignees: TaskAssigneeDto[];
   badges: TaskBadgeDto[];
+  /** The checklist, rendered inline on the board card. */
+  subtasks: SubtaskNodeDto[];
   createdAt: string;
   updatedAt: string;
 }
@@ -135,7 +137,6 @@ export interface TaskActivityDto {
 
 export interface TaskDetailDto extends BoardTaskDto {
   description: string | null;
-  subtasks: SubtaskNodeDto[];
   activities: TaskActivityDto[];
 }
 

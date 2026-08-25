@@ -26,7 +26,7 @@ export function HomePage() {
 
   if (!data) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="px-5 py-6">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error ?? 'Failed to load home'}</AlertDescription>
@@ -42,8 +42,8 @@ export function HomePage() {
     <div className="min-h-screen bg-surface-primary">
       <PlannerTopbar title="หน้าแรก" subtitle={subtitle} />
 
-      <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="space-y-6 px-5 py-5">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatTile label="งานของฉันที่ค้าง" value={data.myOpenCount} hint="ทุกแผนงาน" />
           <StatTile
             label="เลยกำหนด"

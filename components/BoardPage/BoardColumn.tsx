@@ -25,6 +25,7 @@ interface BoardColumnProps {
   canMoveLeft: boolean;
   canMoveRight: boolean;
   onOpenTask: (taskId: string) => void;
+  onToggleSubtask: (taskId: string, subtaskId: string, desiredIsDone: boolean) => void;
   onAddTask: (groupId: string, title: string) => Promise<void>;
   onRenameGroup: (groupId: string, name: string) => Promise<boolean>;
   onRecolorGroup: (groupId: string, color: GroupColorKey) => void;
@@ -39,6 +40,7 @@ export function BoardColumn({
   canMoveLeft,
   canMoveRight,
   onOpenTask,
+  onToggleSubtask,
   onAddTask,
   onRenameGroup,
   onRecolorGroup,
@@ -139,7 +141,12 @@ export function BoardColumn({
           strategy={verticalListSortingStrategy}
         >
           {group.taskItems.map((task) => (
-            <BoardTaskCard key={task.id} task={task} onOpen={onOpenTask} />
+            <BoardTaskCard
+              key={task.id}
+              task={task}
+              onOpen={onOpenTask}
+              onToggleSubtask={onToggleSubtask}
+            />
           ))}
         </SortableContext>
 

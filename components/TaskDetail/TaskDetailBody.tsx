@@ -4,9 +4,15 @@
 // capability added here exists on both — Instruction-task-page.md §2 forbids
 // the two drifting apart.
 //
-// The only intended difference is the activity feed: the page passes its
-// paginated one, the panel passes the latest-10 list off the task payload.
-// That is what `activitySlot` is for.
+// Layout follows the mockup: status / priority / dates / assignees sit
+// together in one compact field card rather than as four separate sections
+// each with its own heading and margin. On the full page that card moves into
+// a right-hand column so the width is spent on the description, the checklist
+// and the activity feed instead of on empty gutters.
+//
+// The only intended difference between the surfaces is the activity feed: the
+// page passes its paginated one, the panel passes the latest-10 list off the
+// task payload. That is what `activitySlot` is for.
 'use client';
 
 import React, { useCallback } from 'react';
@@ -40,7 +46,7 @@ interface TaskDetailBodyProps {
   groups: (BoardGroupDto | GroupSummaryDto)[];
   members: OrganizationMemberDto[];
   activitySlot: React.ReactNode;
-  /** 'panel' tightens the vertical rhythm for the narrower slide-over. */
+  /** 'panel' stacks everything; 'page' puts the field card in a side column. */
   density?: 'panel' | 'page';
 }
 
@@ -52,8 +58,15 @@ function reportFailure(label: string) {
   };
 }
 
-const SECTION_HEADING =
-  'mb-2 text-xs font-semibold uppercase tracking-wider text-content-tertiary';
+/** One labelled row inside the field card — label left, control right. */
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5 px-3 py-2.5 sm:flex-row sm:items-start sm:gap-3">
+      <span className="w-24 shrink-0 pt-1 text-xs text-content-tertiary">{label}</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
 
 export function TaskDetailBody({
   task,
@@ -145,47 +158,51 @@ export function TaskDetailBody({
     [deleteSubtask]
   );
 
-  return (
-    <div className={density === 'panel' ? 'space-y-5' : 'space-y-6'}>
-      <section aria-label="Status">
-        <h2 className={SECTION_HEADING}>Status</h2>
+  const fieldCard = (
+    <div className="divide-y divide-border-subtle rounded-xl border border-border-subtle bg-surface-secondary">
+      <FieldRow label="สถานะ">
         {/* Not gated on isPending: the chip highlight moves optimistically, so
             graying the row out would be the only thing left that reads as a
             freeze. */}
         <StatusChipRow groups={groups} activeGroupId={task.groupId} onChange={handleStatusChange} />
-      </section>
+      </FieldRow>
 
-      <section aria-label="Priority">
-        <h2 className={SECTION_HEADING}>Priority</h2>
+      <FieldRow label="ความสำคัญ">
         <PriorityChipRow value={task.priority} onChange={handlePriorityChange} />
-      </section>
+      </FieldRow>
 
-      <section aria-label="Dates">
-        <h2 className={SECTION_HEADING}>Dates</h2>
+      <FieldRow label="กำหนดส่ง">
         <TaskDatesEditor
           startDate={task.startDate}
           dueDate={task.dueDate}
           onChange={handleDatesChange}
         />
-      </section>
+      </FieldRow>
 
-      <TaskDescriptionEditor
-        description={task.description}
-        saving={isPending('description')}
-        onSave={handleDescriptionSave}
-      />
-
-      <TaskBadgeList badges={task.badges} />
-
-      <section aria-label="Assignees">
-        <h2 className={SECTION_HEADING}>Assignees</h2>
+      <FieldRow label="ผู้รับผิดชอบ">
         <AssigneePicker
           members={members}
           assignees={task.assignees}
           disabled={isPending('assignees')}
           onToggle={handleAssigneeToggle}
         />
-      </section>
+      </FieldRow>
+
+      {task.badges.length > 0 && (
+        <FieldRow label="ป้ายกำกับ">
+          <TaskBadgeList badges={task.badges} bare />
+        </FieldRow>
+      )}
+    </div>
+  );
+
+  const main = (
+    <div className="space-y-5">
+      <TaskDescriptionEditor
+        description={task.description}
+        saving={isPending('description')}
+        onSave={handleDescriptionSave}
+      />
 
       <TaskSubtaskSection
         subtasks={task.subtasks}
@@ -200,6 +217,24 @@ export function TaskDetailBody({
       <LastCheckedBanner subtasks={task.subtasks} />
 
       {activitySlot}
+    </div>
+  );
+
+  if (density === 'panel') {
+    return (
+      <div className="space-y-4">
+        {fieldCard}
+        {main}
+      </div>
+    );
+  }
+
+  // Wide screens get two columns so the reading measure stays sane and the
+  // fields do not stretch across the whole page.
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+      {main}
+      <aside className="xl:order-last">{fieldCard}</aside>
     </div>
   );
 }

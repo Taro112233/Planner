@@ -77,7 +77,7 @@ export function TaskPage({ taskId }: TaskPageProps) {
   // transient 429 while editing quickly would otherwise wipe the whole page.
   if (!task) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-5 py-6">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error ?? 'Failed to load task'}</AlertDescription>
@@ -106,7 +106,7 @@ export function TaskPage({ taskId }: TaskPageProps) {
         loading={isPending('delete')}
       />
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="px-5 py-5">
         <TaskDetailBody
           task={task}
           detail={detail}

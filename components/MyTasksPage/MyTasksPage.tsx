@@ -26,7 +26,7 @@ export function MyTasksPage() {
 
   if (!data) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="px-5 py-6">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error ?? 'Failed to load tasks'}</AlertDescription>
@@ -41,7 +41,7 @@ export function MyTasksPage() {
     <div className="min-h-screen bg-surface-primary">
       <PlannerTopbar title="งานของฉัน" subtitle="งานที่คุณรับผิดชอบ ทุกแผนงาน" />
 
-      <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="space-y-5 px-5 py-5">
         {isEmpty ? (
           <EmptyState
             title="ยังไม่มีงานที่ค้างอยู่"

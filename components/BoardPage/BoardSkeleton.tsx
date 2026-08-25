@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export function BoardSkeleton() {
   return (
     <div className="min-h-screen bg-surface-primary">
-      <div className="px-4 sm:px-6 lg:px-8 py-6">
+      <div className="px-5 py-5">
         <Skeleton className="h-7 w-32 mb-6" />
         <div className="flex items-start gap-4 overflow-x-auto pb-4">
           {Array.from({ length: 3 }).map((_, i) => (

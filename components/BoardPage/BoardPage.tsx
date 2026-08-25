@@ -51,6 +51,7 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
     updateGroup,
     reorderGroups,
     deleteGroup,
+    toggleSubtask,
     applyTaskUpdate,
   } = useBoard(planId);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -62,6 +63,14 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
   const [panelTaskId, setPanelTaskId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [view, setView] = useState<BoardViewMode>('board');
+
+  const handleToggleSubtask = useCallback(
+    async (taskId: string, subtaskId: string, desiredIsDone: boolean) => {
+      const ok = await toggleSubtask(taskId, subtaskId, desiredIsDone);
+      if (!ok) toast.error('อัปเดตงานย่อยไม่สำเร็จ');
+    },
+    [toggleSubtask]
+  );
 
   const openTaskPanel = useCallback((taskId: string) => {
     setPanelTaskId(taskId);
@@ -91,7 +100,7 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
 
   if (!board) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-5 py-6">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error ?? 'Failed to load board'}</AlertDescription>
@@ -205,7 +214,7 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
         action={<NewTaskButton groups={board.groups} onAddTask={handleAddTask} />}
       />
 
-      <div className="px-4 sm:px-6 lg:px-8 py-5">
+      <div className="px-5 py-5">
         <div className="mb-5">
           <BoardViewSwitcher value={view} onChange={setView} />
         </div>
@@ -226,6 +235,7 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
                   canMoveLeft={index > 0}
                   canMoveRight={index < board.groups.length - 1}
                   onOpenTask={openTaskPanel}
+                  onToggleSubtask={handleToggleSubtask}
                   onAddTask={handleAddTask}
                   onRenameGroup={handleRenameGroup}
                   onRecolorGroup={handleRecolorGroup}
@@ -251,6 +261,11 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
       {panelTaskId && (
         <TaskDetailModal
           taskId={panelTaskId}
+          // The board already loaded this card, subtasks included — handing it
+          // over means the panel opens filled in rather than on a spinner.
+          initialTask={board.groups
+            .flatMap((group) => group.taskItems)
+            .find((task) => task.id === panelTaskId)}
           open={panelOpen}
           onOpenChange={setPanelOpen}
           onTaskUpdated={applyTaskUpdate}

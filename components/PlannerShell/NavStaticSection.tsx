@@ -46,7 +46,7 @@ export function NavStaticSection({ label, items, activeHref }: NavStaticSectionP
             const content = (
               <>
                 <NavIconChip color={item.color}>{item.icon}</NavIconChip>
-                <span className="truncate">{item.label}</span>
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
               </>
             );
 
