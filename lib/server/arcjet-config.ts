@@ -32,6 +32,60 @@ interface ArcjetDecision {
   results: ArcjetResult[];
 }
 
+// ===== KILL SWITCH =====
+
+/**
+ * Temporary bypass for local work.
+ *
+ * Set `ARCJET_ENABLED="false"` in .env to make every protect() call return an
+ * allow decision without contacting Arcjet — useful when the 20 req/min bucket
+ * gets in the way of clicking around. Any other value (or no value) leaves
+ * protection on, so forgetting to set it fails safe.
+ *
+ * The rules below stay exactly as they are; only the call is short-circuited.
+ */
+const ARCJET_DISABLED = process.env.ARCJET_ENABLED === "false";
+
+/** Shape the route handlers rely on, regardless of which rules an instance has. */
+interface ArcjetProtector {
+  protect(request: NextRequest, options?: { requested?: number }): Promise<ArcjetDecision>;
+}
+
+/** A decision that denies nothing and reports no rate-limit results. */
+const ALLOW_DECISION: ArcjetDecision = {
+  isDenied: () => false,
+  reason: {},
+  results: [],
+};
+
+let warnedAboutBypass = false;
+
+/**
+ * Wrap a live instance so the kill switch is honoured at the single place
+ * every route already calls — no route handler needs to know about it.
+ */
+function withKillSwitch(instance: { protect: (...args: never[]) => unknown }): ArcjetProtector {
+  return {
+    protect(request, options) {
+      if (ARCJET_DISABLED) {
+        if (!warnedAboutBypass) {
+          warnedAboutBypass = true;
+          console.warn(
+            "[arcjet] ARCJET_ENABLED=false — rate limiting, bot detection and shield are OFF"
+          );
+        }
+        return Promise.resolve(ALLOW_DECISION);
+      }
+
+      const protect = instance.protect as (
+        request: NextRequest,
+        options?: { requested?: number }
+      ) => Promise<ArcjetDecision>;
+      return protect(request, options);
+    },
+  };
+}
+
 // ===== ARCJET INSTANCES =====
 
 /**
@@ -40,7 +94,7 @@ interface ArcjetDecision {
  * - Bot detection enabled
  * - Shield protection against injection attacks
  */
-export const arcjetAuth = arcjet({
+const arcjetAuthLive = arcjet({
   key: process.env.ARCJET_KEY!,
   rules: [
     shield({ mode: "LIVE" }),
@@ -62,7 +116,7 @@ export const arcjetAuth = arcjet({
  * - Allow search engines and monitoring bots
  * - Shield protection
  */
-export const arcjetAPI = arcjet({
+const arcjetAPILive = arcjet({
   key: process.env.ARCJET_KEY!,
   rules: [
     shield({ mode: "LIVE" }),
@@ -87,7 +141,7 @@ export const arcjetAPI = arcjet({
  * - Lower rate limits due to resource intensity
  * - Smaller bucket capacity
  */
-export const arcjetUpload = arcjet({
+const arcjetUploadLive = arcjet({
   key: process.env.ARCJET_KEY!,
   rules: [
     shield({ mode: "LIVE" }),
@@ -103,6 +157,12 @@ export const arcjetUpload = arcjet({
     }),
   ],
 });
+
+// The exported instances route handlers import. Identical rules; the wrapper
+// only adds the ARCJET_ENABLED bypass above.
+export const arcjetAuth = withKillSwitch(arcjetAuthLive);
+export const arcjetAPI = withKillSwitch(arcjetAPILive);
+export const arcjetUpload = withKillSwitch(arcjetUploadLive);
 
 // ===== HELPER FUNCTIONS =====
 

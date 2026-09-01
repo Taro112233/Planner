@@ -7,3 +7,4 @@ export { EmptyState } from './EmptyState';
 export { LoadingState } from './LoadingState';
 export { ConfirmDeleteModal } from './ConfirmDeleteModal';
 export { ConfirmLeaveModal } from './ConfirmLeaveModal';
+export { InlineTextEditor } from './InlineTextEditor';

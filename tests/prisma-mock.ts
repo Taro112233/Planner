@@ -28,3 +28,17 @@ import { beforeEach } from 'vitest';
 beforeEach(() => {
   mockReset(prismaMock);
 });
+
+/**
+ * Make `prisma.$transaction(cb)` run its callback immediately against the same
+ * mock, so `tx.foo.bar()` assertions land on `prismaMock.foo.bar`.
+ *
+ * Call it in any test that exercises a service function wrapping writes in a
+ * transaction — without it `$transaction` resolves to undefined and none of
+ * the inner calls happen.
+ */
+export function mockTransactionPassthrough() {
+  (prismaMock.$transaction as unknown as { mockImplementation: (fn: unknown) => void }).mockImplementation(
+    (callback: (tx: typeof prismaMock) => unknown) => callback(prismaMock)
+  );
+}

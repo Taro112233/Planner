@@ -13,6 +13,37 @@
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
+/**
+ * Every value of the ActivityAction enum in prisma/schemas/task-item.prisma,
+ * hand-mirrored so this file stays Prisma-free like the two unions above.
+ */
+export type ActivityActionValue =
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'TASK_STATUS_CHANGED'
+  | 'TASK_ASSIGNED'
+  | 'TASK_UNASSIGNED'
+  | 'TASK_MOVED'
+  | 'TASK_DELETED'
+  | 'TASK_RESTORED'
+  | 'TASK_PURGED'
+  | 'SUBTASK_CREATED'
+  | 'SUBTASK_RENAMED'
+  | 'SUBTASK_CHECKED'
+  | 'SUBTASK_UNCHECKED'
+  | 'SUBTASK_MOVED'
+  | 'SUBTASK_DELETED'
+  // Structural events: these describe a column or plan, so they carry no
+  // taskItemId — the name lives in targetTitle.
+  | 'GROUP_CREATED'
+  | 'GROUP_RENAMED'
+  | 'GROUP_RECOLORED'
+  | 'GROUP_DELETED'
+  | 'GROUP_REORDERED'
+  | 'PLAN_CREATED'
+  | 'PLAN_RENAMED'
+  | 'PLAN_DELETED';
+
 /** A single organization member assigned to a TaskItem. */
 export interface TaskAssigneeDto {
   organizationUserId: string;
@@ -45,22 +76,30 @@ export interface BoardTaskDto {
   subtaskDone: number;
   assignees: TaskAssigneeDto[];
   badges: TaskBadgeDto[];
+  /** The checklist, rendered inline on the board card. */
+  subtasks: SubtaskNodeDto[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface BoardGroupDto {
+/** A column's own settings, without its cards. Returned by group mutations. */
+export interface GroupSettingsDto {
   id: string;
   name: string;
   color: string | null;
   icon: string | null;
   wipLimit: number | null;
   sortOrder: number;
+}
+
+export interface BoardGroupDto extends GroupSettingsDto {
   taskItems: BoardTaskDto[];
 }
 
 export interface BoardDto {
   organizationId: string;
+  /** The plan this board belongs to — an organization can hold several. */
+  planId: string;
   groups: BoardGroupDto[];
 }
 
@@ -76,20 +115,179 @@ export interface SubtaskNodeDto {
   depth: number;
   childTotal: number;
   childDone: number;
+  /**
+   * Snapshot of who ticked this subtask, taken at check time. All three are
+   * null while the subtask is not done — setSubtaskDone clears them on uncheck
+   * (prisma/Instruction-task.md invariant I7).
+   */
+  checkedByName: string | null;
+  checkedByAvatarUrl: string | null;
+  checkedAt: string | null;
   children: SubtaskNodeDto[];
 }
 
 export interface TaskActivityDto {
   id: string;
-  action: string;
+  action: ActivityActionValue;
   actorNameSnapshot: string;
+  actorAvatarUrl: string | null;
   targetTitle: string | null;
   createdAt: string;
 }
 
 export interface TaskDetailDto extends BoardTaskDto {
   description: string | null;
-  subtasks: SubtaskNodeDto[];
+  activities: TaskActivityDto[];
+}
+
+// ─────────────────────────────────────────────
+// Task templates — GET /api/task-templates
+// ─────────────────────────────────────────────
+
+/** One node of a template's checklist blueprint (depth 0..2). */
+export interface TaskTemplateNode {
+  title: string;
+  children: TaskTemplateNode[];
+}
+
+/** A saved task shape: pick it and a card is created already filled in. */
+export interface TaskTemplateDto {
+  id: string;
+  name: string;
+  title: string;
+  priority: TaskPriority;
+  subtasks: TaskTemplateNode[];
+  sortOrder: number;
+}
+
+// ─────────────────────────────────────────────
+// Dashboard — GET /api/my-tasks, /api/home
+// ─────────────────────────────────────────────
+
+/** The mockup's three due windows: เลยกำหนด/วันนี้ · สัปดาห์นี้ · ถัดไป. */
+export type DueBucketKey = 'overdue' | 'week' | 'later';
+
+/** A card as it appears on a cross-plan list, carrying its board context. */
+export interface MyTaskDto {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  priority: TaskPriority;
+  subtaskTotal: number;
+  subtaskDone: number;
+  groupName: string;
+  groupColor: string | null;
+  planId: string | null;
+  planName: string;
+}
+
+export interface MyTasksDto {
+  overdue: MyTaskDto[];
+  week: MyTaskDto[];
+  later: MyTaskDto[];
+  openCount: number;
+  doneCount: number;
+}
+
+export interface HomeSummaryDto {
+  myOpenCount: number;
+  myOverdueCount: number;
+  teamOpenCount: number;
+  checkedTodayCount: number;
+  dueSoon: MyTaskDto[];
+  activities: TaskActivityDto[];
+}
+
+// ─────────────────────────────────────────────
+// Workspaces — GET /api/workspaces
+// ─────────────────────────────────────────────
+
+/**
+ * An organization the signed-in user belongs to. Users get one of their own on
+ * first sign-in and pick up others by redeeming a group join code.
+ */
+export interface WorkspaceDto {
+  organizationId: string;
+  organizationUserId: string;
+  name: string;
+  slug: string;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+}
+
+// ─────────────────────────────────────────────
+// Plans and plan groups — GET /api/plans, /api/plan-groups
+// ─────────────────────────────────────────────
+
+/**
+ * One Kanban board. Note the naming: BoardGroupDto/GroupSummaryDto describe a
+ * COLUMN, while PlanGroupDto is the mockup's "กลุ่ม" — a folder of plans.
+ */
+export interface PlanDto {
+  id: string;
+  organizationId: string;
+  planGroupId: string | null;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  sortOrder: number;
+}
+
+/** A column chip on a plan card in the group overview. */
+export interface PlanColumnSummaryDto {
+  id: string;
+  name: string;
+  color: string | null;
+  taskCount: number;
+}
+
+/** A plan plus the progress counters the sidebar and group overview render. */
+export interface PlanSummaryDto extends PlanDto {
+  taskCount: number;
+  doneCount: number;
+  completionPct: number;
+  columns: PlanColumnSummaryDto[];
+}
+
+/** A folder of plans — the mockup's "กลุ่มของฉัน". */
+export interface PlanGroupDto {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  icon: string | null;
+  sortOrder: number;
+  planCount: number;
+}
+
+/** A group's invite-code state, shown only to its owner. */
+export interface PlanGroupJoinSettingsDto {
+  id: string;
+  joinCode: string | null;
+  joinCodeEnabled: boolean;
+}
+
+/** What POST /api/plan-groups/join answers with. */
+export interface PlanGroupJoinResultDto {
+  planGroupId: string;
+  planGroupName: string;
+  organizationId: string;
+  /** True when the caller was already in the group — the call is idempotent. */
+  alreadyMember: boolean;
+}
+
+/** A member row on the group overview, with their open workload. */
+export interface PlanGroupMemberDto extends OrganizationMemberDto {
+  openTaskCount: number;
+}
+
+/** Everything GET /api/plan-groups/[id]/overview returns. */
+export interface PlanGroupOverviewDto {
+  planGroup: PlanGroupDto;
+  /** Owner-only: null for everyone else, so the code never leaves the owner. */
+  joinSettings: PlanGroupJoinSettingsDto | null;
+  isOwner: boolean;
+  plans: PlanSummaryDto[];
+  members: PlanGroupMemberDto[];
   activities: TaskActivityDto[];
 }
 
@@ -103,6 +301,20 @@ export interface GroupSummaryDto {
   name: string;
   color: string | null;
   sortOrder: number;
+}
+
+// ─────────────────────────────────────────────
+// Trash — GET /api/board/trash
+// ─────────────────────────────────────────────
+
+/** A soft-deleted TaskItem row, listed in the Trash view. */
+export interface TrashedTaskDto {
+  id: string;
+  title: string;
+  priority: TaskPriority;
+  groupName: string;
+  deletedAt: string;
+  deletedByName: string;
 }
 
 // ─────────────────────────────────────────────

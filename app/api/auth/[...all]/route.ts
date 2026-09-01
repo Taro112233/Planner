@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     // Log security events
     if (decision.isDenied()) {
       logSecurityEvent({
-        type: decision.reason.isBot() ? "bot_blocked" : "rate_limit",
+        type: decision.reason.isBot?.() ? "bot_blocked" : "rate_limit",
         ip: getClientIP(request),
         path: pathname,
         userAgent: request.headers.get("user-agent") || undefined,

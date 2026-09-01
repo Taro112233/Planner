@@ -4,13 +4,19 @@
 // depending on where the caller mounts it).
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 interface AddSubtaskFormProps {
   onSubmit: (title: string) => void;
+  /**
+   * Locks the submit button only — never the input. Callers flip this the
+   * instant a submit starts, and disabling a focused input makes the browser
+   * blur it, which used to trip the onBlur below and collapse the form on
+   * every single submit.
+   */
   disabled?: boolean;
   label?: string;
   placeholder?: string;
@@ -24,6 +30,7 @@ export function AddSubtaskForm({
 }: AddSubtaskFormProps) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +38,9 @@ export function AddSubtaskForm({
     if (!title) return;
     onSubmit(title);
     setDraft('');
-    setAdding(false);
+    // Stay open and refocused for the next entry (Notion/Linear-style rapid
+    // add) instead of collapsing back to the trigger button on every submit.
+    inputRef.current?.focus();
   };
 
   if (!adding) {
@@ -50,12 +59,13 @@ export function AddSubtaskForm({
   return (
     <form onSubmit={handleSubmit} className="flex items-center gap-2">
       <Input
+        ref={inputRef}
         autoFocus
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => !draft.trim() && setAdding(false)}
+        onKeyDown={(e) => e.key === 'Escape' && setAdding(false)}
         placeholder={placeholder}
-        disabled={disabled}
         className="h-8 text-sm"
       />
       <Button type="submit" size="sm" className="h-8" disabled={disabled || !draft.trim()}>

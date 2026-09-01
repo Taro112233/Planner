@@ -8,24 +8,32 @@ import { CSS } from '@dnd-kit/utilities';
 import { Calendar, Flag } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PRIORITY_STYLES } from '@/components/TaskDetail/priorityStyles';
+import { initials } from '@/components/TaskDetail/subtaskAttribution';
+import { BoardCardChecklist } from './BoardCardChecklist';
 import type { BoardTaskDto } from '@/types/planner';
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.charAt(0) ?? '';
-  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
-  return `${first}${last}`.toUpperCase() || '?';
-}
 
 interface BoardTaskCardProps {
   task: BoardTaskDto;
   onOpen: (taskId: string) => void;
+  /** Omitted by the drag overlay, which is a static preview. */
+  onToggleSubtask?: (taskId: string, subtaskId: string, desiredIsDone: boolean) => void;
   /** Static preview rendered inside a DragOverlay — skips sortable wiring. */
   overlay?: boolean;
 }
 
-export function BoardTaskCard({ task, onOpen, overlay = false }: BoardTaskCardProps) {
-  const sortable = useSortable({ id: task.id, disabled: overlay });
+export function BoardTaskCard({
+  task,
+  onOpen,
+  onToggleSubtask,
+  overlay = false,
+}: BoardTaskCardProps) {
+  const sortable = useSortable({
+    id: task.id,
+    disabled: overlay,
+    // Lets the board's collision detection prefer a card over the column
+    // droppable underneath it (see BoardPage).
+    data: { type: 'card', groupId: task.groupId },
+  });
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = sortable;
 
   const style = overlay
@@ -92,10 +100,20 @@ export function BoardTaskCard({ task, onOpen, overlay = false }: BoardTaskCardPr
         )}
       </div>
 
+      {/* The mockup puts the checklist itself on the card, not just a counter,
+          and lets you tick it there. */}
+      <BoardCardChecklist
+        subtasks={task.subtasks}
+        onToggle={
+          onToggleSubtask
+            ? (subtaskId, desiredIsDone) => onToggleSubtask(task.id, subtaskId, desiredIsDone)
+            : undefined
+        }
+      />
+
       {task.subtaskTotal > 0 && (
         <div className="mt-2">
           <div className="flex items-center justify-between text-[10px] text-content-tertiary mb-1">
-            <span>Subtasks</span>
             <span className="tabular-nums">
               {task.subtaskDone}/{task.subtaskTotal}
             </span>

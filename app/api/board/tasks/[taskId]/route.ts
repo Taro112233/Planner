@@ -17,7 +17,7 @@ import {
   apiInternalError,
 } from '@/lib/server/api-response';
 import { resolveBoardActor } from '@/lib/server/board-actor';
-import { getTaskDetail } from '@/services/board.service';
+import { getTaskDetail, deleteTask } from '@/services/board.service';
 
 export async function GET(
   request: NextRequest,
@@ -43,6 +43,35 @@ export async function GET(
       return apiNotFound('Task not found');
     }
     console.error('[GET /api/board/tasks/[taskId]]', error);
+    return apiInternalError();
+  }
+}
+
+// DELETE /api/board/tasks/[taskId] — move a task to the trash (soft delete).
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ taskId: string }> }
+) {
+  try {
+    const decision = await arcjetAPI.protect(request, { requested: 1 });
+    const arcjetError = handleArcjetDecision(decision);
+    if (arcjetError) return apiRateLimited(arcjetError.error);
+
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user) return apiUnauthorized();
+
+    const { taskId } = await params;
+    if (!taskId) return apiBadRequest('taskId path parameter is required');
+
+    const { organizationId, actor } = await resolveBoardActor(session.user);
+    const result = await deleteTask(organizationId, taskId, actor);
+
+    return apiSuccess(result, 'Task moved to trash');
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Task not found') {
+      return apiNotFound('Task not found');
+    }
+    console.error('[DELETE /api/board/tasks/[taskId]]', error);
     return apiInternalError();
   }
 }

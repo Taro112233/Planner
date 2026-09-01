@@ -5,9 +5,24 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation } from '@/hooks/useMutation';
-import type { BoardDto, BoardGroupDto, BoardTaskDto } from '@/types/planner';
+import type {
+  BoardDto,
+  BoardGroupDto,
+  BoardTaskDto,
+  TaskDetailDto,
+  TaskPriority,
+} from '@/types/planner';
+import type { GroupColorKey } from '@/lib/shared/group-colors';
+import { toggleSubtaskInTask } from '@/lib/shared/subtask-tree';
+
+/** The column settings a caller may patch. Omitted keys stay untouched. */
+export interface GroupPatch {
+  name?: string;
+  color?: GroupColorKey | null;
+  wipLimit?: number | null;
+}
 
 export interface UseBoardReturn {
   board: BoardDto | null;
@@ -15,22 +30,64 @@ export interface UseBoardReturn {
   error: string | null;
   refetch: () => Promise<void>;
   moveTask: (taskId: string, groupId: string, targetIndex: number) => Promise<boolean>;
-  addTask: (groupId: string, title: string) => Promise<boolean>;
-  addGroup: (name: string, color?: string) => Promise<boolean>;
+  /**
+   * Local-only reposition, used while a drag is in flight so the other cards
+   * shift out of the way. Persist with commitMove when the drag ends.
+   */
+  previewMove: (taskId: string, groupId: string, targetIndex: number) => void;
+  /** Persists a position the board already shows. */
+  commitMove: (taskId: string, groupId: string, targetIndex: number) => Promise<boolean>;
+  /** `priority` omitted → the server applies the schema default (MEDIUM). */
+  addTask: (groupId: string, title: string, priority?: TaskPriority) => Promise<boolean>;
+  /** Create a card from a saved template, checklist and all. */
+  addTaskFromTemplate: (groupId: string, templateId: string) => Promise<boolean>;
+  addGroup: (name: string, color?: GroupColorKey) => Promise<boolean>;
+  updateGroup: (groupId: string, patch: GroupPatch) => Promise<boolean>;
+  reorderGroups: (orderedGroupIds: string[]) => Promise<boolean>;
+  /** Relocates the column's cards into `targetGroupId`, then deletes it. */
+  deleteGroup: (
+    groupId: string,
+    targetGroupId: string
+  ) => Promise<{ movedTaskCount: number } | null>;
+  /** Tick a subtask straight from its card, without opening the panel. */
+  toggleSubtask: (
+    taskId: string,
+    subtaskId: string,
+    desiredIsDone: boolean
+  ) => Promise<boolean>;
+  /** Merges a task edited elsewhere (e.g. the detail panel) into board state. */
+  applyTaskUpdate: (task: TaskDetailDto) => void;
 }
 
-export function useBoard(): UseBoardReturn {
+/**
+ * @param planId Board to load. Omitted → the organization's default plan,
+ *   which the API provisions on first use.
+ */
+export function useBoard(planId?: string): UseBoardReturn {
   const [board, setBoard] = useState<BoardDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { mutate } = useMutation();
 
+  const hasLoadedRef = useRef(false);
+  const boardRef = useRef<BoardDto | null>(null);
+  // applyTaskUpdate is declared further down; toggleSubtask reaches it through
+  // this ref rather than forcing a reorder of the file.
+  const applyTaskUpdateRef = useRef<((task: TaskDetailDto) => void) | null>(null);
+  useEffect(() => {
+    boardRef.current = board;
+  }, [board]);
+
   const fetchBoard = useCallback(async () => {
     try {
-      setLoading(true);
+      // Only the cold load swaps in the skeleton. A background refresh keeps
+      // the board (and any open task panel) mounted.
+      if (!hasLoadedRef.current) setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/board', { credentials: 'include' });
+      const response = await fetch(planId ? `/api/board?planId=${planId}` : '/api/board', {
+        credentials: 'include',
+      });
       const data = await response.json();
 
       if (!response.ok || !data.success) {
@@ -38,12 +95,13 @@ export function useBoard(): UseBoardReturn {
       }
 
       setBoard(data.data as BoardDto);
+      hasLoadedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load board');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [planId]);
 
   useEffect(() => {
     fetchBoard();
@@ -51,41 +109,45 @@ export function useBoard(): UseBoardReturn {
 
   // Optimistically relocates a task within local state, then persists the
   // move; on failure it refetches to discard the optimistic change.
-  const moveTask = useCallback(
-    async (taskId: string, groupId: string, targetIndex: number) => {
-      setBoard((prev) => {
-        if (!prev) return prev;
+  const previewMove = useCallback((taskId: string, groupId: string, targetIndex: number) => {
+    setBoard((prev) => {
+      if (!prev) return prev;
 
-        let moved: BoardTaskDto | undefined;
-        const groups = prev.groups.map((group) => ({
-          ...group,
-          taskItems: group.taskItems.filter((task) => {
-            if (task.id === taskId) {
-              moved = task;
-              return false;
-            }
-            return true;
-          }),
-        }));
+      let moved: BoardTaskDto | undefined;
+      const groups = prev.groups.map((group) => ({
+        ...group,
+        taskItems: group.taskItems.filter((task) => {
+          if (task.id === taskId) {
+            moved = task;
+            return false;
+          }
+          return true;
+        }),
+      }));
 
-        if (!moved) return prev;
+      if (!moved) return prev;
 
-        const nextGroups = groups.map((group) => {
-          if (group.id !== groupId) return group;
-          const taskItems = [...group.taskItems];
-          taskItems.splice(targetIndex, 0, { ...moved!, groupId });
-          return { ...group, taskItems };
-        });
-
-        return { ...prev, groups: nextGroups };
+      const nextGroups = groups.map((group) => {
+        if (group.id !== groupId) return group;
+        const taskItems = [...group.taskItems];
+        taskItems.splice(targetIndex, 0, { ...moved!, groupId });
+        return { ...group, taskItems };
       });
 
+      return { ...prev, groups: nextGroups };
+    });
+  }, []);
+
+  const commitMove = useCallback(
+    async (taskId: string, groupId: string, targetIndex: number) => {
       const result = await mutate<{ groupId: string; targetIndex: number }>(
         `/api/board/tasks/${taskId}/move`,
         { method: 'PATCH', body: { groupId, targetIndex } }
       );
 
       if (!result) {
+        // The board is showing a position the server rejected — reload rather
+        // than guess at what it should look like.
         await fetchBoard();
         return false;
       }
@@ -94,12 +156,20 @@ export function useBoard(): UseBoardReturn {
     [mutate, fetchBoard]
   );
 
+  const moveTask = useCallback(
+    async (taskId: string, groupId: string, targetIndex: number) => {
+      previewMove(taskId, groupId, targetIndex);
+      return commitMove(taskId, groupId, targetIndex);
+    },
+    [previewMove, commitMove]
+  );
+
   const addTask = useCallback(
-    async (groupId: string, title: string) => {
-      const created = await mutate<{ groupId: string; title: string }>('/api/board/tasks', {
-        method: 'POST',
-        body: { groupId, title },
-      });
+    async (groupId: string, title: string, priority?: TaskPriority) => {
+      const created = await mutate<{ groupId: string; title: string; priority?: TaskPriority }>(
+        '/api/board/tasks',
+        { method: 'POST', body: { groupId, title, ...(priority && { priority }) } }
+      );
       if (!created) return false;
 
       setBoard((prev) => {
@@ -118,12 +188,28 @@ export function useBoard(): UseBoardReturn {
     [mutate]
   );
 
-  const addGroup = useCallback(
-    async (name: string, color?: string) => {
-      const created = await mutate<{ name: string; color?: string }>('/api/board/groups', {
+  const addTaskFromTemplate = useCallback(
+    async (groupId: string, templateId: string) => {
+      const created = await mutate<{ groupId: string; templateId: string }>('/api/board/tasks', {
         method: 'POST',
-        body: { name, color },
+        body: { groupId, templateId },
       });
+      if (!created) return false;
+
+      // The response is a TaskDetailDto (the card plus description/activities),
+      // so fold it in the same way a panel edit is folded in.
+      applyTaskUpdateRef.current?.(created as TaskDetailDto);
+      return true;
+    },
+    [mutate]
+  );
+
+  const addGroup = useCallback(
+    async (name: string, color?: GroupColorKey) => {
+      const created = await mutate<{ name: string; color?: string }>(
+        planId ? `/api/board/groups?planId=${planId}` : '/api/board/groups',
+        { method: 'POST', body: { name, color } }
+      );
       if (!created) return false;
 
       setBoard((prev) =>
@@ -131,8 +217,194 @@ export function useBoard(): UseBoardReturn {
       );
       return true;
     },
-    [mutate]
+    [mutate, planId]
   );
 
-  return { board, loading, error, refetch: fetchBoard, moveTask, addTask, addGroup };
+  /**
+   * Patches a column's settings locally first (keeping its cards), then
+   * persists. On failure it refetches to discard — the same shape moveTask
+   * uses.
+   */
+  const updateGroup = useCallback(
+    async (groupId: string, patch: GroupPatch) => {
+      setBoard((prev) =>
+        prev
+          ? {
+              ...prev,
+              groups: prev.groups.map((group) =>
+                group.id === groupId ? { ...group, ...patch } : group
+              ),
+            }
+          : prev
+      );
+
+      const updated = await mutate<GroupPatch>(`/api/board/groups/${groupId}`, {
+        method: 'PATCH',
+        body: patch,
+      });
+
+      if (!updated) {
+        await fetchBoard();
+        return false;
+      }
+      return true;
+    },
+    [mutate, fetchBoard]
+  );
+
+  const reorderGroups = useCallback(
+    async (orderedGroupIds: string[]) => {
+      setBoard((prev) => {
+        if (!prev) return prev;
+        const byId = new Map(prev.groups.map((group) => [group.id, group]));
+        const groups = orderedGroupIds
+          .map((id, index) => {
+            const group = byId.get(id);
+            return group ? { ...group, sortOrder: index } : null;
+          })
+          .filter((group): group is BoardGroupDto => group !== null);
+        // Bail out rather than render a partial board if the ids don't line up.
+        return groups.length === prev.groups.length ? { ...prev, groups } : prev;
+      });
+
+      const updated = await mutate<{ groupIds: string[] }>(
+        planId ? `/api/board/groups/reorder?planId=${planId}` : '/api/board/groups/reorder',
+        { method: 'PATCH', body: { groupIds: orderedGroupIds } }
+      );
+
+      if (!updated) {
+        await fetchBoard();
+        return false;
+      }
+      return true;
+    },
+    [mutate, fetchBoard, planId]
+  );
+
+  /**
+   * Not optimistic: the server recomputes the relocated cards' positions, so a
+   * local guess would drift. hasLoadedRef keeps the refetch skeleton-free.
+   */
+  const deleteGroup = useCallback(
+    async (groupId: string, targetGroupId: string) => {
+      const result = await mutate<{ targetGroupId: string }>(`/api/board/groups/${groupId}`, {
+        method: 'DELETE',
+        body: { targetGroupId },
+      });
+      if (!result) return null;
+
+      await fetchBoard();
+      return result as { movedTaskCount: number };
+    },
+    [mutate, fetchBoard]
+  );
+
+  /**
+   * Ticking from the card. Paints the change immediately using the same
+   * counter rules the service applies (lib/shared/subtask-tree.ts), then
+   * reconciles with the task the server returns.
+   */
+  const toggleSubtask = useCallback(
+    async (taskId: string, subtaskId: string, desiredIsDone: boolean) => {
+      const snapshot = boardRef.current;
+
+      setBoard((prev) =>
+        prev
+          ? {
+              ...prev,
+              groups: prev.groups.map((group) => ({
+                ...group,
+                taskItems: group.taskItems.map((task) =>
+                  task.id === taskId
+                    ? toggleSubtaskInTask(task, subtaskId, desiredIsDone)
+                    : task
+                ),
+              })),
+            }
+          : prev
+      );
+
+      const updated = await mutate<{ isDone: boolean }>(
+        `/api/board/tasks/${taskId}/subtasks/${subtaskId}`,
+        { method: 'PATCH', body: { isDone: desiredIsDone } }
+      );
+
+      if (!updated) {
+        // Put back exactly what was on screen before the click.
+        if (snapshot) setBoard(snapshot);
+        else await fetchBoard();
+        return false;
+      }
+
+      // The response carries the server's counters and the checker snapshot.
+      applyTaskUpdateRef.current?.(updated as TaskDetailDto);
+      return true;
+    },
+    [mutate, fetchBoard]
+  );
+
+  /**
+   * Folds a TaskDetailDto returned by a panel mutation back into board state.
+   * Cheaper and far less disruptive than refetching /api/board, which used to
+   * flash the skeleton and remount the very panel that triggered the edit.
+   */
+  const applyTaskUpdate = useCallback(
+    (updated: TaskDetailDto) => {
+      // Board cards are BoardTaskDto — drop only the detail-only fields. The
+      // subtask tree stays: cards render their checklist inline.
+      const { description: _d, activities: _a, ...card } = updated;
+
+      const targetExists = boardRef.current?.groups.some((group) => group.id === card.groupId);
+      if (!targetExists) {
+        // Moved into a column this tab hasn't seen yet — a local patch would
+        // make the card vanish, so fall back to a (silent) refetch.
+        void fetchBoard();
+        return;
+      }
+
+      setBoard((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          groups: prev.groups.map((group) => {
+            const without = group.taskItems.filter((task) => task.id !== card.id);
+
+            if (group.id !== card.groupId) {
+              // Untouched columns keep their identity so views can bail out.
+              return without.length === group.taskItems.length ? group : { ...group, taskItems: without };
+            }
+
+            // `position` is a serialized Decimal using halved gaps (1, 0.5,
+            // 1.5, …) — it must be compared numerically, since as strings
+            // "10" sorts before "9".
+            const taskItems = [...without, card].sort(
+              (a, b) => Number(a.position) - Number(b.position)
+            );
+            return { ...group, taskItems };
+          }),
+        };
+      });
+    },
+    [fetchBoard]
+  );
+
+  applyTaskUpdateRef.current = applyTaskUpdate;
+
+  return {
+    board,
+    loading,
+    error,
+    refetch: fetchBoard,
+    moveTask,
+    previewMove,
+    commitMove,
+    addTask,
+    addTaskFromTemplate,
+    addGroup,
+    updateGroup,
+    reorderGroups,
+    deleteGroup,
+    toggleSubtask,
+    applyTaskUpdate,
+  };
 }

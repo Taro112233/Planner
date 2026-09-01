@@ -1,0 +1,124 @@
+// prisma/schemas/plan.prisma
+// The two container levels between Organization and Group (the Kanban column):
+//
+//   Organization  = เวิร์กสเปซ
+//   └─ PlanGroup  = กลุ่ม     ("กลุ่มของฉัน" in the mockup)
+//      └─ Plan    = แผนงาน   ("แผนงาน" — one Kanban board)
+//         └─ Group = หัวข้อ   (the column model, defined in planner.prisma)
+//
+// ⚠️ `Group` in this schema is a COLUMN, not the mockup's "กลุ่ม". The mockup's
+// group is PlanGroup. See Instruction-group.md §1.
+
+/**
+ * A folder of plans, joined by code the way an MS Teams team is: the owner
+ * generates a code and can switch joining on and off at any time.
+ */
+model PlanGroup {
+  id             String @id @default(cuid())
+  organizationId String
+
+  name        String
+  description String?
+  color       String? // Palette key — see lib/shared/group-colors.ts
+  icon        String? // Lucide/custom icon name
+  sortOrder   Int     @default(0)
+
+  /**
+   * Human-typeable invite code, unique across every organization because
+   * someone joining has only the code — no workspace context. Null means one
+   * has never been generated; regenerating replaces it, which invalidates any
+   * code already shared.
+   */
+  joinCode String? @unique
+  /** Off by default: a code only works while the owner is accepting joins. */
+  joinCodeEnabled Boolean @default(false)
+
+  /** The member who created the group, and who may manage the join code. */
+  ownerId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Restrict, like TaskItem.creator: memberships are soft-left (status =
+  // LEFT), never hard-deleted, and SetNull cannot be used on a composite key
+  // whose organizationId is required.
+  owner        OrganizationUser? @relation("PlanGroupOwner", fields: [ownerId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  plans        Plan[]
+  members      PlanGroupMember[]
+
+  @@unique([organizationId, name])
+  // Composite tenant key used by Plan to prevent cross-org relations.
+  @@unique([id, organizationId])
+  @@index([organizationId, sortOrder])
+  @@index([joinCode])
+  @@map("plan_groups")
+}
+
+enum PlanGroupRole {
+  OWNER
+  MEMBER
+}
+
+/**
+ * Who is in a group. Joining by code adds the user to the owner's
+ * Organization first (as a MEMBER) and then to the group — the same order MS
+ * Teams uses: you land in the workspace, then in the team.
+ */
+model PlanGroupMember {
+  id             String @id @default(cuid())
+  organizationId String
+  planGroupId    String
+
+  organizationUserId String
+  role               PlanGroupRole @default(MEMBER)
+
+  joinedAt DateTime @default(now())
+
+  planGroup PlanGroup        @relation(fields: [planGroupId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  member    OrganizationUser @relation("PlanGroupMembership", fields: [organizationUserId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([planGroupId, organizationUserId])
+  @@index([organizationId, organizationUserId])
+  @@map("plan_group_members")
+}
+
+/**
+ * One Kanban board. Its columns are Group rows.
+ *
+ * `planGroupId` is nullable on purpose: the mockup has plans both inside a
+ * group and standing alone, and it keeps the backfill from having to invent a
+ * group for existing data.
+ */
+model Plan {
+  id             String  @id @default(cuid())
+  organizationId String
+  planGroupId    String?
+
+  name      String
+  color     String? // Palette key — see lib/shared/group-colors.ts
+  icon      String?
+  sortOrder Int     @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  // Soft delete, mirroring TaskItem: non-null means the plan is in the trash.
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Restrict, not Cascade: deleting a group must never delete the work inside
+  // it. SetNull is unavailable here because the composite key includes the
+  // required organizationId, and Postgres SET NULL would blank that too — so
+  // deletePlanGroup detaches its plans inside the same transaction first,
+  // exactly as deleteGroup relocates a column's cards before dropping it.
+  planGroup    PlanGroup?   @relation(fields: [planGroupId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  groups Group[]
+
+  @@unique([organizationId, name])
+  // Composite tenant key used by Group to prevent cross-org relations.
+  @@unique([id, organizationId])
+  @@index([organizationId, planGroupId, sortOrder])
+  @@index([organizationId, deletedAt])
+  @@map("plans")
+}

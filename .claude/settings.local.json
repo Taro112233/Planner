@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm type-check *)",
+      "Bash(pnpm lint *)",
+      "Bash(pnpm build *)",
+      "Bash(rm vitest.config.ts)",
+      "Bash(pnpm test *)"
+    ]
+  }
+}

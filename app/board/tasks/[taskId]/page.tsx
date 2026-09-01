@@ -19,7 +19,9 @@ export default function TaskPageRoute() {
     }
   }, [loading, user, router]);
 
-  if (loading) return <TaskPageSkeleton />;
+  // Skeleton only while the session is still unknown — a revalidation that
+  // keeps the same user must not unmount TaskPage and lose in-progress edits.
+  if (loading && !user) return <TaskPageSkeleton />;
   if (!user) return null;
 
   return <TaskPage taskId={taskId} />;

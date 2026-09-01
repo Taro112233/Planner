@@ -6,7 +6,10 @@
 
 import React from 'react';
 import * as Checkbox from '@radix-ui/react-checkbox';
-import { Check, ChevronRight } from 'lucide-react';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Check, ChevronRight, GripVertical } from 'lucide-react';
+import { SubtaskCheckedBy } from './SubtaskCheckedBy';
 import type { SubtaskNodeDto } from '@/types/planner';
 
 // ─────────────────────────────────────────────
@@ -17,12 +20,17 @@ interface RecursiveSubtaskListProps {
   /** Array of subtask nodes to render at this level */
   subtasks: SubtaskNodeDto[];
   /**
-   * Called when the user toggles a checkbox.
-   * Bubbles up from any depth — always passes the leaf node's ID.
+   * Called when the user toggles a checkbox. Bubbles up from any depth —
+   * always passes the leaf node's ID plus the desired next isDone value
+   * (not a blind toggle — see prisma/Instruction-task.md §6).
    */
-  onToggle: (subtaskId: string) => void;
-  /** Whether a toggle mutation is currently in-flight */
-  isToggling: boolean;
+  onToggle: (subtaskId: string, desiredIsDone: boolean) => void;
+  /**
+   * Whether a toggle mutation is in flight. Optional: `onToggle` carries an
+   * explicit desired state, so locking the checkboxes is a choice, not a
+   * correctness requirement — TaskPage leaves them live.
+   */
+  isToggling?: boolean;
   /** Current nesting depth — enforced ≤ 10, start at 0 */
   depth?: number;
   /**
@@ -31,6 +39,16 @@ interface RecursiveSubtaskListProps {
    * TaskDetailModal, which doesn't pass this prop.
    */
   renderNodeExtra?: (subtask: SubtaskNodeDto, depth: number) => React.ReactNode;
+  /** Show who ticked each done row and when. */
+  showCheckedBy?: boolean;
+  /** Show "done/total" for rows that have direct children. */
+  showChildCount?: boolean;
+  /**
+   * Enables drag-to-reorder. One SortableContext covers the whole tree (set up
+   * by the root render), so a row can be dropped next to any other row —
+   * including one at a different level, which reparents it.
+   */
+  sortable?: boolean;
 }
 
 const MAX_DEPTH = 10;
@@ -42,14 +60,17 @@ const MAX_DEPTH = 10;
 export function RecursiveSubtaskList({
   subtasks,
   onToggle,
-  isToggling,
+  isToggling = false,
   depth = 0,
   renderNodeExtra,
+  showCheckedBy = true,
+  showChildCount = true,
+  sortable = false,
 }: RecursiveSubtaskListProps) {
   if (!subtasks || subtasks.length === 0) return null;
   if (depth > MAX_DEPTH) return null;
 
-  return (
+  const rows = (
     <ul
       className="flex flex-col gap-1"
       style={{ paddingLeft: depth === 0 ? 0 : '1.25rem' }}
@@ -64,9 +85,25 @@ export function RecursiveSubtaskList({
           isToggling={isToggling}
           depth={depth}
           renderNodeExtra={renderNodeExtra}
+          showCheckedBy={showCheckedBy}
+          showChildCount={showChildCount}
+          sortable={sortable}
         />
       ))}
     </ul>
+  );
+
+  // Only the outermost render registers the context; nested levels are already
+  // inside it, and a nested context would trap drags at their own level.
+  if (!sortable || depth > 0) return rows;
+
+  const allIds = (nodes: SubtaskNodeDto[]): string[] =>
+    nodes.flatMap((node) => [node.id, ...allIds(node.children)]);
+
+  return (
+    <SortableContext items={allIds(subtasks)} strategy={verticalListSortingStrategy}>
+      {rows}
+    </SortableContext>
   );
 }
 
@@ -76,19 +113,56 @@ export function RecursiveSubtaskList({
 
 interface SubtaskRowProps {
   subtask: SubtaskNodeDto;
-  onToggle: (subtaskId: string) => void;
+  onToggle: (subtaskId: string, desiredIsDone: boolean) => void;
   isToggling: boolean;
   depth: number;
   renderNodeExtra?: (subtask: SubtaskNodeDto, depth: number) => React.ReactNode;
+  showCheckedBy: boolean;
+  showChildCount: boolean;
+  sortable: boolean;
 }
 
-function SubtaskRow({ subtask, onToggle, isToggling, depth, renderNodeExtra }: SubtaskRowProps) {
+function SubtaskRow({
+  subtask,
+  onToggle,
+  isToggling,
+  depth,
+  renderNodeExtra,
+  showCheckedBy,
+  showChildCount,
+  sortable,
+}: SubtaskRowProps) {
   const hasChildren = subtask.children.length > 0;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: subtask.id,
+    disabled: !sortable,
+  });
 
   return (
-    <li className="select-none">
-      {/* Row: checkbox + label */}
+    <li
+      ref={sortable ? setNodeRef : undefined}
+      style={
+        sortable
+          ? { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
+          : undefined
+      }
+      className="select-none"
+    >
+      {/* Row: handle + checkbox + label */}
       <div className="flex items-center gap-2.5 group py-1">
+        {sortable && (
+          // Only the grip drags. The row also holds a checkbox, a label and a
+          // menu — making the whole thing draggable would swallow all three.
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            aria-label={`ลากเพื่อจัดลำดับ: ${subtask.title}`}
+            className="shrink-0 cursor-grab text-content-tertiary opacity-0 transition-opacity hover:text-content-primary focus-visible:opacity-100 group-hover:opacity-100 active:cursor-grabbing"
+          >
+            <GripVertical size={13} />
+          </button>
+        )}
         {/* Depth indicator chevrons (decorative) */}
         {depth > 0 && (
           <ChevronRight
@@ -102,7 +176,7 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth, renderNodeExtra }: S
         <Checkbox.Root
           id={`subtask-${subtask.id}`}
           checked={subtask.isDone}
-          onCheckedChange={() => onToggle(subtask.id)}
+          onCheckedChange={() => onToggle(subtask.id, !subtask.isDone)}
           disabled={isToggling}
           aria-label={`Toggle subtask: ${subtask.title}`}
           className={[
@@ -132,11 +206,30 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth, renderNodeExtra }: S
           {subtask.title}
         </label>
 
-        {renderNodeExtra && (
-          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-            {renderNodeExtra(subtask, depth)}
-          </div>
+        {/* Always-visible metadata sits outside the hover-reveal wrapper below,
+            which exists for the action menu. */}
+        {showChildCount && subtask.childTotal > 0 && (
+          <span className="shrink-0 text-[10px] text-content-tertiary tabular-nums">
+            {subtask.childDone}/{subtask.childTotal}
+          </span>
         )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {showCheckedBy && (
+            <SubtaskCheckedBy
+              isDone={subtask.isDone}
+              name={subtask.checkedByName}
+              avatarUrl={subtask.checkedByAvatarUrl}
+              checkedAt={subtask.checkedAt}
+            />
+          )}
+
+          {renderNodeExtra && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+              {renderNodeExtra(subtask, depth)}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Recursive children */}
@@ -147,6 +240,8 @@ function SubtaskRow({ subtask, onToggle, isToggling, depth, renderNodeExtra }: S
           isToggling={isToggling}
           depth={depth + 1}
           renderNodeExtra={renderNodeExtra}
+          showCheckedBy={showCheckedBy}
+          showChildCount={showChildCount}
         />
       )}
     </li>

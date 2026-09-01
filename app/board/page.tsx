@@ -18,7 +18,9 @@ export default function BoardRoute() {
     }
   }, [loading, user, router]);
 
-  if (loading) return <BoardSkeleton />;
+  // Skeleton only while the session is still unknown — a revalidation that
+  // keeps the same user must not unmount BoardPage (and any open task panel).
+  if (loading && !user) return <BoardSkeleton />;
   if (!user) return null;
 
   return <BoardPage />;

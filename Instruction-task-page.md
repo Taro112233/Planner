@@ -90,9 +90,18 @@ Controller layer (`app/api/board/tasks/[taskId]/**`) ต้องตาม patte
 
 ```bash
 pnpm type-check
+pnpm test
 pnpm dev
 ```
 
-ยังไม่ต้องพึ่ง `pnpm test` จนกว่าจะแก้ปัญหา toolchain ของ vitest ที่ค้างจาก Phase 1
-(native binding + วิธี resolve ESM ของ `vite`/`std-env` ไม่ตรงกัน — ปัญหานี้เกิดก่อน Phase 1
-ไม่เกี่ยวกับโค้ดที่เพิ่ม)
+`pnpm test` ใช้งานได้แล้ว — toolchain ของ vitest ที่ค้างมาตั้งแต่ Phase 1 ถูกซ่อมแล้ว
+เป็นปัญหาสองชั้นซ้อนกัน ไม่เกี่ยวกับโค้ดของ Phase 1/2 เลย:
+
+1. **native binding หาย** — `@rolldown/binding-win32-x64-msvc@1.0.0-rc.12` (optionalDependency
+   ของ rolldown ที่ vitest 4 ต้องใช้) อยู่ใน `pnpm-lock.yaml` แต่ไม่เคยถูกติดตั้งลงดิสก์
+   แก้ด้วย `pnpm install --force`
+2. **ESM/CJS ไม่ตรงกัน** — `package.json` ไม่มี `"type": "module"` ทำให้ `vitest.config.ts`
+   ถูกโหลดแบบ CommonJS → Vite `require()` เข้า CJS entry ของ vitest → entry นั้น `require()`
+   `std-env` v4 ที่เป็น ESM-only → Node 20.14 ยังไม่รองรับ `require(esm)` จึงโยน
+   `ERR_REQUIRE_ESM` แก้ด้วยการเปลี่ยนชื่อไฟล์เป็น `vitest.config.mts` (บังคับใช้ ESM loader)
+   **ห้ามเปลี่ยนกลับเป็น `.ts`**

@@ -106,6 +106,31 @@
   --color-alert-info-text:      oklch(0.85 0.05 250);
   --color-alert-info-icon:      oklch(0.65 0.18 250);
 
+
+  /* ── STATUS COLORS ──────────────────────────────────────────────────────────
+     Accent-independent. These back bg-surface-danger / -danger-subtle /
+     -warning and text-content-danger / -warning, which components already
+     used before the tokens existed (so the utilities generated nothing). */
+  --color-content-danger:         oklch(0.72 0.18 25);
+  --color-content-warning:        oklch(0.78 0.15 75);
+  --color-surface-danger:         oklch(0.55 0.20 25);
+  --color-surface-danger-subtle:  oklch(0.26 0.05 25);
+  --color-surface-warning:        oklch(0.26 0.05 75);
+
+  /* ── GROUP (KANBAN COLUMN) COLORS ───────────────────────────────────────────
+     A column's identity color must NOT follow the active accent — two columns
+     have to stay distinguishable under every accent — so these are fixed hues
+     rather than chart tokens. Group.color stores the key ("blue"); see
+     lib/shared/group-colors.ts. */
+  --color-group-slate:  oklch(0.70 0.02 286);
+  --color-group-blue:   oklch(0.72 0.15 250);
+  --color-group-orange: oklch(0.74 0.16 60);
+  --color-group-green:  oklch(0.72 0.15 150);
+  --color-group-purple: oklch(0.70 0.16 300);
+  --color-group-pink:   oklch(0.72 0.16 355);
+  --color-group-teal:   oklch(0.72 0.13 200);
+  --color-group-yellow: oklch(0.80 0.15 95);
+
   /* ── GLASS MORPHISM ─────────────────────────────────────────────────────── */
   --glass-bg-semantic:            oklch(0.21 0.006 286 / 0.80);
   --glass-bg-strong-semantic:     oklch(0.21 0.006 286 / 0.95);
@@ -627,7 +652,30 @@
   --color-alert-info-bg:        oklch(0.17 0.005 250);
   --color-alert-info-border:    oklch(0.60 0.18 250 / 0.35);
   --color-alert-info-text:      oklch(0.85 0.05 250);
-  --color-alert-info-icon:      oklch(0.65 0.18 250);
+
+  /* ── STATUS COLORS ──────────────────────────────────────────────────────────
+     Accent-independent. These back bg-surface-danger / -danger-subtle /
+     -warning and text-content-danger / -warning, which components already
+     used before the tokens existed (so the utilities generated nothing). */
+  --color-content-danger:         oklch(0.72 0.18 25);
+  --color-content-warning:        oklch(0.78 0.15 75);
+  --color-surface-danger:         oklch(0.55 0.20 25);
+  --color-surface-danger-subtle:  oklch(0.26 0.05 25);
+  --color-surface-warning:        oklch(0.26 0.05 75);
+
+  /* ── GROUP (KANBAN COLUMN) COLORS ───────────────────────────────────────────
+     A column's identity color must NOT follow the active accent — two columns
+     have to stay distinguishable under every accent — so these are fixed hues
+     rather than chart tokens. Group.color stores the key ("blue"); see
+     lib/shared/group-colors.ts. */
+  --color-group-slate:  oklch(0.70 0.02 286);
+  --color-group-blue:   oklch(0.72 0.15 250);
+  --color-group-orange: oklch(0.74 0.16 60);
+  --color-group-green:  oklch(0.72 0.15 150);
+  --color-group-purple: oklch(0.70 0.16 300);
+  --color-group-pink:   oklch(0.72 0.16 355);
+  --color-group-teal:   oklch(0.72 0.13 200);
+  --color-group-yellow: oklch(0.80 0.15 95);
 }
 
 /* =============================================================================
@@ -718,6 +766,24 @@
   --color-alert-info-border:    oklch(0.60 0.18 250 / 0.35);
   --color-alert-info-text:      oklch(0.24 0.15 250);
   --color-alert-info-icon:      oklch(0.38 0.18 250);
+
+  /* ── STATUS COLORS — light ──────────────────────────────────────────────── */
+  --color-content-danger:         oklch(0.50 0.20 25);
+  --color-content-warning:        oklch(0.48 0.14 75);
+  --color-surface-danger:         oklch(0.58 0.22 25);
+  --color-surface-danger-subtle:  oklch(0.94 0.03 25);
+  --color-surface-warning:        oklch(0.95 0.04 75);
+
+  /* ── GROUP (KANBAN COLUMN) COLORS — light ───────────────────────────────── */
+  --color-group-slate:  oklch(0.55 0.02 286);
+  --color-group-blue:   oklch(0.55 0.16 250);
+  --color-group-orange: oklch(0.60 0.16 60);
+  --color-group-green:  oklch(0.55 0.15 150);
+  --color-group-purple: oklch(0.52 0.18 300);
+  --color-group-pink:   oklch(0.56 0.18 355);
+  --color-group-teal:   oklch(0.55 0.12 200);
+  --color-group-yellow: oklch(0.65 0.15 95);
+
 }
 
 /* =============================================================================
