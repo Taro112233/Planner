@@ -23,6 +23,7 @@ import { PRIORITY_STYLES } from './priorityStyles';
 import { TaskDetailBody } from './TaskDetailBody';
 import { TaskTitleEditor } from './TaskTitleEditor';
 import { TaskActivityFeed } from './TaskActivityFeed';
+import { useResizablePanel } from './useResizablePanel';
 import type { BoardGroupDto, BoardTaskDto, TaskDetailDto } from '@/types/planner';
 
 interface TaskDetailModalProps {
@@ -51,6 +52,7 @@ export function TaskDetailModal({
   onTaskDeleted,
 }: TaskDetailModalProps) {
   const detail = useTaskDetail(taskId, { onTaskChange: onTaskUpdated, initialTask });
+  const { width, isResizing, handleProps } = useResizablePanel();
   const { task, loading, error, isPending, updateTitle, deleteTask } = detail;
   const { members } = useOrganizationMembers();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -88,17 +90,33 @@ export function TaskDetailModal({
 
         <Dialog.Content
           aria-describedby={undefined}
+          style={{ width }}
           className={[
             'fixed z-50 inset-y-0 right-0',
-            'w-full max-w-lg',
+            'max-w-[95vw]',
             'flex flex-col',
             'bg-surface-primary border-l border-border-subtle',
             'shadow-2xl',
             'data-[state=open]:animate-in data-[state=open]:slide-in-from-right',
             'data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right',
-            'duration-300 ease-in-out',
+            // The width is driven by the drag, so no transition on it — only
+            // the open/close slide animates.
+            isResizing ? 'duration-0' : 'duration-300 ease-in-out',
           ].join(' ')}
         >
+          {/* Drag the left edge to resize; double-click to reset. */}
+          <div
+            {...handleProps}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="ปรับความกว้างของแผงรายละเอียด"
+            title="ลากเพื่อปรับความกว้าง · ดับเบิลคลิกเพื่อรีเซ็ต"
+            className={[
+              // A 6px strip reads as a thin seam but is still easy to grab.
+              'absolute inset-y-0 left-0 z-20 w-1.5 cursor-col-resize transition-colors',
+              isResizing ? 'bg-interactive-primary' : 'hover:bg-interactive-primary/40',
+            ].join(' ')}
+          />
           {/* Radix renders Dialog.Title as an <h2>, so the visible title — an
               editable input half the time — lives in the header below and this
               one only names the dialog for screen readers. */}

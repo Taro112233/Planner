@@ -24,6 +24,7 @@ model Organization {
   planGroups PlanGroup[]
   plans      Plan[]
   groups     Group[]
+  templates  TaskTemplate[]
   badges     TaskBadge[]
   activities TaskActivity[]
 

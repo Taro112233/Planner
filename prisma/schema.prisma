@@ -1,6 +1,6 @@
 // This file is auto-generated. Do not edit manually.
 // Edit files in prisma/schemas/ directory instead.
-// Last generated: 2026-08-25T14:34:09.927Z
+// Last generated: 2026-09-01T09:54:04.946Z
 
 generator client {
   provider        = "prisma-client-js"
@@ -209,6 +209,7 @@ model OrganizationUser {
   user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   planGroupsOwned   PlanGroup[]       @relation("PlanGroupOwner")
+  taskTemplates     TaskTemplate[]    @relation("TaskTemplateCreator")
   planGroupMembers  PlanGroupMember[] @relation("PlanGroupMembership")
   taskItemsCreated TaskItem[]     @relation("TaskItemCreator")
   taskItemsDeleted TaskItem[]     @relation("TaskItemDeletedBy")
@@ -385,6 +386,7 @@ model Organization {
   planGroups PlanGroup[]
   plans      Plan[]
   groups     Group[]
+  templates  TaskTemplate[]
   badges     TaskBadge[]
   activities TaskActivity[]
 
@@ -689,4 +691,50 @@ model TaskActivity {
   @@index([organizationId, planId, createdAt(sort: Desc)])
   @@index([batchId])
   @@map("task_activities")
+}
+
+// ==========================================
+// TASK-TEMPLATE SCHEMA
+// ==========================================
+
+// prisma/schemas/task-template.prisma
+// Reusable task blueprints: pick one and a card is created already carrying
+// its checklist, instead of typing the same structure out every time.
+//
+// Note this is NOT the mockup's "เทมเพลต" page, which templates a PLAN (a set
+// of columns). This templates a single TaskItem and its subtasks.
+
+/**
+ * A saved task shape. The checklist lives in JSON rather than its own table
+ * because it is a blueprint, not live data — nothing references its nodes, and
+ * it is only ever read whole to stamp out a new card.
+ */
+model TaskTemplate {
+  id             String @id @default(cuid())
+  organizationId String
+
+  /** What the template is called in the picker. */
+  name String
+  /** The title the new card starts with. */
+  title    String
+  priority TaskPriority @default(MEDIUM)
+
+  /**
+   * Nested blueprint, depth 0..2 to match the Subtask tree:
+   *   [{ "title": "…", "children": [{ "title": "…", "children": [] }] }]
+   */
+  subtasks Json? @db.JsonB
+
+  sortOrder   Int     @default(0)
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      OrganizationUser? @relation("TaskTemplateCreator", fields: [createdById, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([organizationId, name])
+  @@index([organizationId, sortOrder])
+  @@map("task_templates")
 }

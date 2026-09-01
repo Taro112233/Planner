@@ -48,6 +48,12 @@ interface PlanNavSectionProps {
   variant?: 'chip' | 'square';
   /** Rendered under the list — e.g. the "join with a code" action. */
   footer?: React.ReactNode;
+  /**
+   * Replaces the "+" button's direct behaviour with a menu. The render prop
+   * receives a callback that opens the inline name field, so a menu entry can
+   * still fall through to it.
+   */
+  renderAddMenu?: (openNameField: () => void) => React.ReactNode;
 }
 
 export interface NavItem {
@@ -94,6 +100,7 @@ export function PlanNavSection({
   onDelete,
   variant = 'square',
   footer,
+  renderAddMenu,
 }: PlanNavSectionProps) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
@@ -117,10 +124,14 @@ export function PlanNavSection({
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
-      <SidebarGroupAction title={addLabel} onClick={() => setAdding((open) => !open)}>
-        <Plus />
-        <span className="sr-only">{addLabel}</span>
-      </SidebarGroupAction>
+      {renderAddMenu ? (
+        renderAddMenu(() => setAdding(true))
+      ) : (
+        <SidebarGroupAction title={addLabel} onClick={() => setAdding((open) => !open)}>
+          <Plus />
+          <span className="sr-only">{addLabel}</span>
+        </SidebarGroupAction>
+      )}
 
       <SidebarGroupContent>
         {adding && (
@@ -134,6 +145,13 @@ export function PlanNavSection({
                   setDraft('');
                   setAdding(false);
                 }
+              }}
+              // Clicking away without confirming means the field is no longer
+              // wanted — leaving it open would clutter the rail.
+              onBlur={() => {
+                if (submitting) return;
+                setDraft('');
+                setAdding(false);
               }}
               placeholder={addPlaceholder}
               disabled={submitting}

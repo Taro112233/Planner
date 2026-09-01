@@ -5,6 +5,15 @@
 'use client';
 
 import React, { useState } from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { toast } from 'sonner';
 import { ConfirmDeleteModal } from '@/components/shared';
 import { RecursiveSubtaskList } from './RecursiveSubtaskList';
 import { AddSubtaskForm } from './AddSubtaskForm';
@@ -26,6 +35,12 @@ interface TaskSubtaskSectionProps {
   onAddSubtask: (title: string, parentSubtaskId?: string) => Promise<boolean>;
   onRenameSubtask: (subtaskId: string, title: string) => Promise<boolean>;
   onDeleteSubtask: (subtaskId: string) => Promise<boolean>;
+  /** Omit to render the tree without drag handles. */
+  onMoveSubtask?: (
+    subtaskId: string,
+    targetIndex: number,
+    parentSubtaskId?: string | null
+  ) => Promise<boolean>;
 }
 
 export function TaskSubtaskSection({
@@ -36,9 +51,75 @@ export function TaskSubtaskSection({
   onAddSubtask,
   onRenameSubtask,
   onDeleteSubtask,
+  onMoveSubtask,
 }: TaskSubtaskSectionProps) {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // A small activation distance keeps a click on the grip from registering as
+  // a drag, and leaves the checkbox and row menu clickable.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  /** The level a row lives on, plus the parent that owns it. */
+  const locate = (
+    nodes: SubtaskNodeDto[],
+    subtaskId: string,
+    parent: SubtaskNodeDto | null = null
+  ): { siblings: SubtaskNodeDto[]; parentId: string | null; node: SubtaskNodeDto } | null => {
+    const node = nodes.find((candidate) => candidate.id === subtaskId);
+    if (node) return { siblings: nodes, parentId: parent?.id ?? null, node };
+
+    for (const candidate of nodes) {
+      const found = locate(candidate.children, subtaskId, candidate);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  /** How many levels deep the row's own subtree goes. */
+  const heightOf = (node: SubtaskNodeDto): number =>
+    node.children.length === 0 ? 0 : 1 + Math.max(...node.children.map(heightOf));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || !onMoveSubtask) return;
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    if (activeId === overId) return;
+
+    const from = locate(subtasks, activeId);
+    const to = locate(subtasks, overId);
+    if (!from || !to) return;
+
+    // Dropping a row inside its own subtree would detach that branch.
+    if (locate([from.node], overId)) return;
+
+    // Landing next to a row means becoming its sibling — that is what makes a
+    // drop onto a different level reparent rather than be rejected.
+    const targetParentId = to.parentId;
+    const sameLevel = from.parentId === targetParentId;
+
+    let index = to.siblings.findIndex((node) => node.id === overId);
+    if (sameLevel) {
+      const currentIndex = from.siblings.findIndex((node) => node.id === activeId);
+      // Removing the row first shifts every later index left by one.
+      if (currentIndex < index) index -= 1;
+      if (currentIndex === index) return;
+    }
+
+    if (!sameLevel) {
+      const targetDepth = to.node.depth;
+      // The schema caps the tree at three levels (invariant I2); refuse here
+      // rather than let the server reject and the optimistic move snap back.
+      if (targetDepth + heightOf(from.node) > 2) {
+        toast.error('ย้ายไม่ได้ — งานย่อยซ้อนได้ลึกสุด 3 ชั้น');
+        return;
+      }
+    }
+
+    void onMoveSubtask(activeId, index, sameLevel ? undefined : targetParentId);
+  };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
@@ -82,9 +163,11 @@ export function TaskSubtaskSection({
       )}
 
       {subtasks.length > 0 ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <RecursiveSubtaskList
           subtasks={subtasks}
           onToggle={onToggle}
+          sortable={Boolean(onMoveSubtask)}
           renderNodeExtra={(subtask, depth) => (
             <SubtaskRowMenu
               subtask={subtask}
@@ -96,6 +179,7 @@ export function TaskSubtaskSection({
             />
           )}
         />
+        </DndContext>
       ) : (
         <p className="text-sm text-content-tertiary mb-2">No subtasks yet.</p>
       )}

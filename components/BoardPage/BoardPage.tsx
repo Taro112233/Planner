@@ -8,7 +8,10 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
+  type DragOverEvent,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -17,7 +20,7 @@ import {
 import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { PlannerTopbar } from '@/components/PlannerShell';
+import { PlannerTopbar, PlannerBreadcrumb } from '@/components/PlannerShell';
 import { useBoard } from '@/hooks/useBoard';
 import { BoardSkeleton } from './BoardSkeleton';
 import { BoardColumn } from './BoardColumn';
@@ -27,10 +30,31 @@ import { BoardViewSwitcher, type BoardViewMode } from './BoardViewSwitcher';
 import { BoardListView } from './BoardListView';
 import { BoardCalendarView } from './BoardCalendarView';
 import { BoardTimelineView } from './BoardTimelineView';
-import { NewTaskButton } from './NewTaskButton';
+import { TaskCreateMenu } from './TaskCreateMenu';
 import { TaskDetailModal } from '@/components/TaskDetail';
+import { usePlanNav } from '@/hooks/usePlanNav';
 import type { TaskPriority } from '@/types/planner';
 import type { GroupColorKey } from '@/lib/shared/group-colors';
+
+
+/**
+ * Prefer the card under the pointer over the column behind it.
+ *
+ * Every column is a droppable covering its whole height, so plain
+ * closestCorners keeps resolving to the column — which meant a card dropped
+ * inside its own column always landed at the bottom instead of where it was
+ * aimed. Ranking card collisions first is what makes reordering work.
+ */
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  const collisions = pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args);
+
+  const cardCollision = collisions.find(
+    (collision) => collision.data?.droppableContainer?.data?.current?.type === 'card'
+  );
+
+  return cardCollision ? [cardCollision] : collisions;
+};
 
 interface BoardPageProps {
   /** Which plan's board to render. Omitted → the organization's default. */
@@ -45,8 +69,10 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
     loading,
     error,
     refetch,
-    moveTask,
+    previewMove,
+    commitMove,
     addTask,
+    addTaskFromTemplate,
     addGroup,
     updateGroup,
     reorderGroups,
@@ -54,6 +80,8 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
     toggleSubtask,
     applyTaskUpdate,
   } = useBoard(planId);
+  // Feeds the breadcrumb; the sidebar has the same data loaded already.
+  const { planGroups, plans } = usePlanNav();
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   // Two pieces of state on purpose. Unmounting a Radix Dialog in the same
   // commit that sets `open` to false skips its close sequence, which can leave
@@ -62,6 +90,12 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
   // its slide-out animation.
   const [panelTaskId, setPanelTaskId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  // Bumped on every open so the panel remounts. Without it, reopening the same
+  // card reuses the old hook state — a subtask ticked from the board in the
+  // meantime would not show, because taskId never changed and nothing
+  // refetched. Remounting happens while the panel is closed, so it does not
+  // bring back the unmount-while-open bug this split-state fixed.
+  const [panelSession, setPanelSession] = useState(0);
   const [view, setView] = useState<BoardViewMode>('board');
 
   const handleToggleSubtask = useCallback(
@@ -74,6 +108,7 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
 
   const openTaskPanel = useCallback((taskId: string) => {
     setPanelTaskId(taskId);
+    setPanelSession((session) => session + 1);
     setPanelOpen(true);
   }, []);
 
@@ -117,36 +152,63 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
     setActiveTaskId(event.active.id as string);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveTaskId(null);
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-    if (activeId === overId) return;
-
+  /**
+   * Where the dragged card should sit given what it is currently over.
+   * Returns null when nothing would change.
+   */
+  const resolveDrop = (activeId: string, overId: string) => {
     const sourceGroup = board.groups.find((g) => g.taskItems.some((t) => t.id === activeId));
-    if (!sourceGroup) return;
+    if (!sourceGroup) return null;
 
     const overGroup =
       board.groups.find((g) => g.id === overId) ??
       board.groups.find((g) => g.taskItems.some((t) => t.id === overId));
-    if (!overGroup) return;
+    if (!overGroup) return null;
 
     let targetIndex = overGroup.taskItems.findIndex((t) => t.id === overId);
     if (targetIndex === -1) targetIndex = overGroup.taskItems.length;
 
     if (sourceGroup.id === overGroup.id) {
       const sourceIndex = sourceGroup.taskItems.findIndex((t) => t.id === activeId);
-      if (sourceIndex === targetIndex) return;
+      if (sourceIndex === targetIndex) return null;
       // Removing the card from its own array first shifts every later index
       // left by one, so a forward move must target one slot earlier.
       if (sourceIndex < targetIndex) targetIndex -= 1;
+      if (sourceIndex === targetIndex) return null;
     }
 
-    void moveTask(activeId, overGroup.id, targetIndex).then((ok) => {
-      if (!ok) toast.error('Failed to move task');
+    return { groupId: overGroup.id, targetIndex };
+  };
+
+  // Reorder as the pointer moves so the other cards open a gap, rather than
+  // everything jumping at the moment of the drop.
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    if (activeId === overId) return;
+
+    const drop = resolveDrop(activeId, overId);
+    if (drop) previewMove(activeId, drop.groupId, drop.targetIndex);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTaskId(null);
+
+    const activeId = String(event.active.id);
+    // handleDragOver already moved the card locally, so the board's current
+    // state IS the intended result — persist that rather than recomputing
+    // from the drop target.
+    const group = board.groups.find((g) => g.taskItems.some((t) => t.id === activeId));
+    if (!group) return;
+
+    const targetIndex = group.taskItems.findIndex((t) => t.id === activeId);
+    if (targetIndex === -1) return;
+
+    void commitMove(activeId, group.id, targetIndex).then((ok) => {
+      if (!ok) toast.error('ย้ายงานไม่สำเร็จ');
     });
   };
 
@@ -211,19 +273,34 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
       <PlannerTopbar
         title={planName ?? 'Board'}
         subtitle={subtitle}
-        action={<NewTaskButton groups={board.groups} onAddTask={handleAddTask} />}
+        breadcrumb={
+          <PlannerBreadcrumb
+            planGroups={planGroups}
+            plans={plans}
+            activeGroupId={
+              plans.find((plan) => plan.id === board.planId)?.planGroupId ?? null
+            }
+            activePlanId={board.planId}
+          />
+        }
       />
 
       <div className="px-5 py-5">
-        <div className="mb-5">
+        <div className="mb-5 flex items-center justify-between gap-3">
           <BoardViewSwitcher value={view} onChange={setView} />
+          <TaskCreateMenu
+            groups={board.groups}
+            onAddTask={handleAddTask}
+            onUseTemplate={addTaskFromTemplate}
+          />
         </div>
 
         {view === 'board' && (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={collisionDetection}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <div className="flex items-start gap-4 overflow-x-auto pb-4">
@@ -260,6 +337,7 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
 
       {panelTaskId && (
         <TaskDetailModal
+          key={panelSession}
           taskId={panelTaskId}
           // The board already loaded this card, subtasks included — handing it
           // over means the panel opens filled in rather than on a spinner.

@@ -49,7 +49,8 @@ export function AppHeader() {
     pathname.startsWith("/plans") ||
     pathname.startsWith("/groups") ||
     pathname.startsWith("/home") ||
-    pathname.startsWith("/my-tasks")
+    pathname.startsWith("/my-tasks") ||
+    pathname.startsWith("/join")
   ) {
     return null;
   }

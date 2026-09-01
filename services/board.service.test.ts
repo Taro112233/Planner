@@ -27,6 +27,7 @@ import {
   unassignTask,
   addSubtask,
   renameSubtask,
+  moveSubtask,
   deleteSubtask,
   type ActorInput,
 } from './board.service';
@@ -1143,5 +1144,126 @@ describe('deleteSubtask', () => {
     await expect(deleteSubtask('org-1', 'task-1', 'ghost', ACTOR)).rejects.toThrow(
       'Subtask not found'
     );
+  });
+});
+
+// ─────────────────────────────────────────────
+// moveSubtask
+// ─────────────────────────────────────────────
+
+describe('moveSubtask', () => {
+  /**
+   *   st-a  (root, depth 0)
+   *     st-a1  (depth 1)
+   *   st-b  (root, depth 0, done)
+   *     st-b1  (depth 1)
+   */
+  const TREE = [
+    { id: 'st-a', title: 'A', parentSubtaskId: null, depth: 0, isDone: false },
+    { id: 'st-a1', title: 'A1', parentSubtaskId: 'st-a', depth: 1, isDone: false },
+    { id: 'st-b', title: 'B', parentSubtaskId: null, depth: 0, isDone: true },
+    { id: 'st-b1', title: 'B1', parentSubtaskId: 'st-b', depth: 1, isDone: false },
+  ];
+
+  beforeEach(() => {
+    // First findMany loads the tree; the second reads the target siblings'
+    // positions.
+    prismaMock.subtask.findMany
+      .mockResolvedValueOnce(TREE as never)
+      .mockResolvedValueOnce([
+        { position: new Prisma.Decimal(1) },
+        { position: new Prisma.Decimal(2) },
+      ] as never);
+    mockTransactionPassthrough();
+  });
+
+  it('halves the gap between the neighbours at the target index', async () => {
+    await moveSubtask('org-1', 'task-1', 'st-b', 1, ACTOR);
+
+    const { data } = prismaMock.subtask.update.mock.calls[0][0];
+    expect(String(data.position)).toBe('1.5');
+    expect(data.version).toEqual({ increment: 1 });
+  });
+
+  it('leaves the parent and every counter alone when only reordering', async () => {
+    await moveSubtask('org-1', 'task-1', 'st-b', 0, ACTOR);
+
+    const { data } = prismaMock.subtask.update.mock.calls[0][0];
+    expect('parentSubtaskId' in data).toBe(false);
+    expect(prismaMock.taskItem.update).not.toHaveBeenCalled();
+    // Only the moved row is touched — no descendants to re-depth.
+    expect(prismaMock.subtask.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs SUBTASK_MOVED', async () => {
+    await moveSubtask('org-1', 'task-1', 'st-b', 0, ACTOR);
+
+    expect(prismaMock.taskActivity.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: 'SUBTASK_MOVED', targetTitle: 'B' }),
+      })
+    );
+  });
+
+  it('reparents a root subtask, moving its counters off the card', async () => {
+    await moveSubtask('org-1', 'task-1', 'st-b', 0, ACTOR, 'st-a');
+
+    const moved = prismaMock.subtask.update.mock.calls[0][0];
+    expect(moved.data).toMatchObject({ parentSubtaskId: 'st-a', depth: 1 });
+
+    // It was a done root, so the card loses one from both counters…
+    expect(prismaMock.taskItem.update).toHaveBeenCalledWith({
+      where: { id: 'task-1' },
+      data: { subtaskTotal: { decrement: 1 }, subtaskDone: { decrement: 1 } },
+    });
+    // …and the new parent gains them.
+    expect(prismaMock.subtask.update).toHaveBeenCalledWith({
+      where: { id: 'st-a' },
+      data: { childTotal: { increment: 1 }, childDone: { increment: 1 } },
+    });
+  });
+
+  it('shifts the whole subtree when a node with children is reparented', async () => {
+    // st-a (with child st-a1) moves under st-b: depth 0 -> 1, child 1 -> 2.
+    await moveSubtask('org-1', 'task-1', 'st-a', 0, ACTOR, 'st-b');
+
+    expect(prismaMock.subtask.update).toHaveBeenCalledWith({
+      where: { id: 'st-a1' },
+      data: { depth: 2, version: { increment: 1 } },
+    });
+  });
+
+  it('refuses a move that would push a descendant past depth 2', async () => {
+    // st-a is one level tall, so landing under st-b1 (depth 1) would put it at
+    // depth 2 and its child st-a1 at depth 3.
+    await expect(moveSubtask('org-1', 'task-1', 'st-a', 0, ACTOR, 'st-b1')).rejects.toThrow(
+      'Maximum subtask depth exceeded'
+    );
+  });
+
+  it('refuses moving a subtask into its own descendant', async () => {
+    await expect(moveSubtask('org-1', 'task-1', 'st-a', 0, ACTOR, 'st-a1')).rejects.toThrow();
+    expect(prismaMock.subtask.update).not.toHaveBeenCalled();
+  });
+
+  it('throws "Parent subtask not found" for a parent on another task', async () => {
+    await expect(moveSubtask('org-1', 'task-1', 'st-b', 0, ACTOR, 'ghost')).rejects.toThrow(
+      'Parent subtask not found'
+    );
+  });
+
+  it('throws "Subtask not found" for a subtask on another task', async () => {
+    prismaMock.subtask.findMany.mockReset();
+    prismaMock.subtask.findMany.mockResolvedValue([] as never);
+
+    await expect(moveSubtask('org-1', 'task-1', 'ghost', 0, ACTOR)).rejects.toThrow(
+      'Subtask not found'
+    );
+  });
+
+  it('throws "Task not found" when the task is missing or trashed', async () => {
+    prismaMock.taskItem.findFirst.mockResolvedValue(null);
+
+    await expect(moveSubtask('org-1', 'ghost', 'st-b', 0, ACTOR)).rejects.toThrow('Task not found');
   });
 });

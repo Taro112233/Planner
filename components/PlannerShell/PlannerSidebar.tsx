@@ -12,22 +12,28 @@
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { toast } from 'sonner';
-import { Search, UserPlus } from 'lucide-react';
+import { FolderPlus, Plus, UserPlus } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroupAction,
   SidebarHeader,
-  SidebarInput,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePlanNav } from '@/hooks/usePlanNav';
 import type { PlanSummaryDto } from '@/types/planner';
 import { NavStaticSection, type StaticNavItem } from './NavStaticSection';
 import { PlanNavSection, planGroupToNavItem, planToNavItem } from './PlanNavSection';
 import { JoinGroupDialog } from './JoinGroupDialog';
+import { SidebarSearchRow } from './SidebarSearchRow';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 function initials(firstName: string, lastName: string): string {
@@ -104,11 +110,8 @@ export function PlannerSidebar() {
     // AppHeader is hidden on planner routes (components/shared/AppHeader.tsx),
     // so the rail uses the primitive's default full-height fixed positioning.
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="relative px-1 py-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-content-tertiary" />
-          <SidebarInput placeholder="ค้นหางาน / งานย่อย" className="pl-8" disabled />
-        </div>
+      <SidebarHeader className="p-1">
+        <SidebarSearchRow />
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden">
@@ -131,17 +134,26 @@ export function PlannerSidebar() {
               ok ? 'ลบกลุ่มแล้ว — แผนงานข้างในยังอยู่' : 'ลบกลุ่มไม่สำเร็จ'
             );
           }}
-          footer={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-full justify-start gap-2 px-2 text-xs text-content-tertiary group-data-[collapsible=icon]:hidden"
-              onClick={() => setJoining(true)}
-            >
-              <UserPlus size={13} />
-              เข้าร่วมด้วยรหัส
-            </Button>
-          }
+          renderAddMenu={(openNameField) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarGroupAction title="เพิ่มกลุ่ม">
+                  <Plus />
+                  <span className="sr-only">เพิ่มกลุ่ม</span>
+                </SidebarGroupAction>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="right" className="w-48">
+                <DropdownMenuItem onSelect={() => setTimeout(openNameField, 0)}>
+                  <FolderPlus size={13} />
+                  สร้างกลุ่มใหม่
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setTimeout(() => setJoining(true), 0)}>
+                  <UserPlus size={13} />
+                  เข้าร่วมกลุ่ม
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         />
 
         <PlanNavSection

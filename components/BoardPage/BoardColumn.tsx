@@ -48,7 +48,7 @@ export function BoardColumn({
   onMoveGroup,
   onDeleteGroup,
 }: BoardColumnProps) {
-  const { setNodeRef } = useDroppable({ id: group.id });
+  const { setNodeRef } = useDroppable({ id: group.id, data: { type: 'column' } });
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [renaming, setRenaming] = useState(false);

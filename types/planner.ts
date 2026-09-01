@@ -141,6 +141,26 @@ export interface TaskDetailDto extends BoardTaskDto {
 }
 
 // ─────────────────────────────────────────────
+// Task templates — GET /api/task-templates
+// ─────────────────────────────────────────────
+
+/** One node of a template's checklist blueprint (depth 0..2). */
+export interface TaskTemplateNode {
+  title: string;
+  children: TaskTemplateNode[];
+}
+
+/** A saved task shape: pick it and a card is created already filled in. */
+export interface TaskTemplateDto {
+  id: string;
+  name: string;
+  title: string;
+  priority: TaskPriority;
+  subtasks: TaskTemplateNode[];
+  sortOrder: number;
+}
+
+// ─────────────────────────────────────────────
 // Dashboard — GET /api/my-tasks, /api/home
 // ─────────────────────────────────────────────
 

@@ -35,6 +35,7 @@ model OrganizationUser {
   user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   planGroupsOwned   PlanGroup[]       @relation("PlanGroupOwner")
+  taskTemplates     TaskTemplate[]    @relation("TaskTemplateCreator")
   planGroupMembers  PlanGroupMember[] @relation("PlanGroupMembership")
   taskItemsCreated TaskItem[]     @relation("TaskItemCreator")
   taskItemsDeleted TaskItem[]     @relation("TaskItemDeletedBy")

@@ -702,9 +702,17 @@ function randomJoinCode(): string {
   return `${body.slice(0, 4)}-${body.slice(4)}`;
 }
 
-/** Codes are typed by humans: accept any case and stray spaces. */
+/**
+ * Codes are typed by humans: accept any case, stray spaces, and a pasted
+ * invite link (the code is its last path segment).
+ */
 export function normalizeJoinCode(input: string): string {
-  const cleaned = input.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const trimmed = input.trim();
+  const fromLink = /^https?:\/\//i.test(trimmed)
+    ? (trimmed.split(/[?#]/)[0].split('/').filter(Boolean).pop() ?? '')
+    : trimmed;
+
+  const cleaned = fromLink.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (cleaned.length !== JOIN_CODE_LENGTH) return cleaned;
   return `${cleaned.slice(0, 4)}-${cleaned.slice(4)}`;
 }

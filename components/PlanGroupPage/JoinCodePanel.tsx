@@ -4,7 +4,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Copy, KeyRound, Loader2, RefreshCw } from 'lucide-react';
+import { Copy, KeyRound, Link as LinkIcon, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -53,11 +53,14 @@ export function JoinCodePanel({ planGroupId, settings, onChange }: JoinCodePanel
     }
   };
 
-  const handleCopy = async () => {
+  const handleCopy = async (asLink = false) => {
     if (!settings?.joinCode) return;
+    const value = asLink
+      ? `${window.location.origin}/join/${settings.joinCode}`
+      : settings.joinCode;
     try {
-      await navigator.clipboard.writeText(settings.joinCode);
-      toast.success('คัดลอกรหัสแล้ว');
+      await navigator.clipboard.writeText(value);
+      toast.success(asLink ? 'คัดลอกลิงก์แล้ว' : 'คัดลอกรหัสแล้ว');
     } catch {
       // Clipboard access can be denied (insecure context, permissions) — the
       // code is on screen either way.
@@ -79,9 +82,13 @@ export function JoinCodePanel({ planGroupId, settings, onChange }: JoinCodePanel
           <code className="rounded-lg bg-surface-tertiary px-3 py-1.5 font-mono text-base tracking-[0.2em] text-content-primary">
             {settings.joinCode}
           </code>
-          <Button variant="outline" size="sm" onClick={handleCopy}>
+          <Button variant="outline" size="sm" onClick={() => handleCopy(false)}>
             <Copy className="size-3.5" />
-            คัดลอก
+            คัดลอกรหัส
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleCopy(true)}>
+            <LinkIcon className="size-3.5" />
+            คัดลอกลิงก์
           </Button>
         </div>
       ) : (

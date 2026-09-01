@@ -466,6 +466,12 @@ describe('normalizeJoinCode', () => {
   it('leaves a wrong-length code unformatted so the lookup simply misses', () => {
     expect(normalizeJoinCode('abc')).toBe('ABC');
   });
+
+  it('pulls the code out of a pasted invite link', () => {
+    expect(normalizeJoinCode('https://planner.app/join/K3F8-QPMR')).toBe('K3F8-QPMR');
+    expect(normalizeJoinCode('https://planner.app/join/k3f8qpmr?from=chat')).toBe('K3F8-QPMR');
+    expect(normalizeJoinCode('https://planner.app/join/K3F8-QPMR/')).toBe('K3F8-QPMR');
+  });
 });
 
 describe('regenerateJoinCode', () => {

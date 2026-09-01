@@ -78,7 +78,7 @@ export function JoinGroupDialog({ open, onOpenChange, onJoined }: JoinGroupDialo
         <DialogHeader>
           <DialogTitle>เข้าร่วมกลุ่มด้วยรหัส</DialogTitle>
           <DialogDescription>
-            ขอรหัสจากเจ้าของกลุ่ม พิมพ์ตัวพิมพ์เล็กหรือใหญ่ก็ได้
+            ขอรหัสหรือลิงก์เชิญจากเจ้าของกลุ่ม วางได้ทั้งสองแบบ
           </DialogDescription>
         </DialogHeader>
 
@@ -87,7 +87,7 @@ export function JoinGroupDialog({ open, onOpenChange, onJoined }: JoinGroupDialo
             autoFocus
             value={code}
             onChange={(event) => setCode(event.target.value)}
-            placeholder="เช่น K3F8-QPMR"
+            placeholder="วางรหัสหรือลิงก์เชิญ"
             disabled={submitting}
             className="text-center font-mono tracking-[0.2em] uppercase"
           />

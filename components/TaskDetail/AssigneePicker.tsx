@@ -27,13 +27,24 @@ export function AssigneePicker({ members, assignees, onToggle, disabled = false 
             onClick={() => onToggle(member.organizationUserId, assigned)}
             disabled={disabled}
             title={member.name}
+            // The selection ring belongs on the Avatar, not on a wrapper:
+            // Avatar already draws its own ring, and two concentric rings read
+            // as a picture that does not fill its frame. Putting it here also
+            // means the ring scales with the avatar's hover animation.
             className={[
-              'rounded-full transition-all',
-              assigned ? 'ring-2 ring-interactive-primary' : 'ring-1 ring-border-subtle opacity-50 hover:opacity-100',
+              'rounded-full transition-opacity',
+              assigned ? '' : 'opacity-50 hover:opacity-100',
               disabled && 'cursor-not-allowed',
-            ].join(' ')}
+            ]
+              .filter(Boolean)
+              .join(' ')}
           >
-            <Avatar size="sm">
+            <Avatar
+              size="sm"
+              className={
+                assigned ? 'ring-2 ring-interactive-primary' : 'ring-1 ring-border-subtle'
+              }
+            >
               {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
               <AvatarFallback className="text-[10px]">{initials(member.name)}</AvatarFallback>
             </Avatar>

@@ -1374,6 +1374,188 @@ export async function addSubtask(
  * @throws Error('Task not found')
  * @throws Error('Subtask not found')
  */
+
+/**
+ * Reposition a subtask: reorder among its siblings, and optionally move it
+ * under a different parent, carrying its whole subtree along.
+ *
+ * Implements the move contract in prisma/Instruction-task.md §8 — the subtree's
+ * depth is rewritten, a move that would push any descendant past depth 2 is
+ * refused, and the direct-child counters of both the old and the new parent are
+ * recomputed (invariants I2, I4, I6).
+ *
+ * `newParentSubtaskId` omitted keeps the current parent; `null` moves the node
+ * to the root.
+ *
+ * @throws Error('Task not found')
+ * @throws Error('Subtask not found')
+ * @throws Error('Parent subtask not found')
+ * @throws Error('Cannot move a subtask into its own descendant')
+ * @throws Error('Maximum subtask depth exceeded')
+ */
+export async function moveSubtask(
+  organizationId: string,
+  taskItemId: string,
+  subtaskId: string,
+  targetIndex: number,
+  actor: ActorInput,
+  newParentSubtaskId?: string | null
+): Promise<TaskDetailDto> {
+  const task = await prisma.taskItem.findFirst({
+    where: { id: taskItemId, organizationId, deletedAt: null },
+    select: { id: true, title: true },
+  });
+  if (!task) throw new Error('Task not found');
+
+  // The whole tree, so descendants, depth and the cycle check can be resolved
+  // without another round trip per level.
+  const rows = await prisma.subtask.findMany({
+    where: { taskItemId, organizationId },
+    orderBy: { position: 'asc' },
+    select: { id: true, title: true, parentSubtaskId: true, depth: true, isDone: true },
+  });
+
+  const subtask = rows.find((row) => row.id === subtaskId);
+  if (!subtask) throw new Error('Subtask not found');
+
+  const childrenOf = new Map<string | null, typeof rows>();
+  rows.forEach((row) => {
+    const siblings = childrenOf.get(row.parentSubtaskId) ?? [];
+    siblings.push(row);
+    childrenOf.set(row.parentSubtaskId, siblings);
+  });
+
+  /** The node plus everything under it, depth-first. */
+  const collectSubtree = (rootId: string): typeof rows => {
+    const node = rows.find((row) => row.id === rootId);
+    if (!node) return [];
+    return [node, ...(childrenOf.get(rootId) ?? []).flatMap((child) => collectSubtree(child.id))];
+  };
+
+  const subtree = collectSubtree(subtaskId);
+  const keepParent = newParentSubtaskId === undefined;
+  const targetParentId = keepParent ? subtask.parentSubtaskId : newParentSubtaskId;
+  const reparenting = targetParentId !== subtask.parentSubtaskId;
+
+  let newDepth = subtask.depth;
+  if (reparenting) {
+    if (targetParentId) {
+      const parent = rows.find((row) => row.id === targetParentId);
+      if (!parent) throw new Error('Parent subtask not found');
+      // Dropping a node inside its own subtree would detach that whole branch
+      // from the tree.
+      if (subtree.some((node) => node.id === targetParentId)) {
+        throw new Error('Cannot move a subtask into its own descendant');
+      }
+      newDepth = parent.depth + 1;
+    } else {
+      newDepth = 0;
+    }
+
+    const subtreeHeight = Math.max(...subtree.map((node) => node.depth)) - subtask.depth;
+    if (newDepth + subtreeHeight > 2) throw new Error('Maximum subtask depth exceeded');
+  }
+
+  const siblings = (childrenOf.get(targetParentId) ?? []).filter((row) => row.id !== subtaskId);
+  const siblingPositions = await prisma.subtask.findMany({
+    where: { id: { in: siblings.map((row) => row.id) } },
+    orderBy: { position: 'asc' },
+    select: { position: true },
+  });
+
+  const position = computeInsertPosition(
+    siblingPositions.map((sibling) => sibling.position),
+    targetIndex
+  );
+  const depthDelta = newDepth - subtask.depth;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.subtask.update({
+      where: { id: subtaskId },
+      data: {
+        position,
+        depth: newDepth,
+        ...(reparenting ? { parentSubtaskId: targetParentId } : {}),
+        version: { increment: 1 },
+      },
+    });
+
+    if (depthDelta !== 0) {
+      // Descendants keep their shape; only their absolute depth shifts.
+      for (const node of subtree) {
+        if (node.id === subtaskId) continue;
+        await tx.subtask.update({
+          where: { id: node.id },
+          data: { depth: node.depth + depthDelta, version: { increment: 1 } },
+        });
+      }
+    }
+
+    if (reparenting) {
+      const doneDelta = subtask.isDone ? 1 : 0;
+
+      if (subtask.parentSubtaskId) {
+        await tx.subtask.update({
+          where: { id: subtask.parentSubtaskId },
+          data: {
+            childTotal: { decrement: 1 },
+            ...(doneDelta ? { childDone: { decrement: 1 } } : {}),
+          },
+        });
+      } else {
+        // Root subtasks are the ones the card's counters track (invariant I6).
+        await tx.taskItem.update({
+          where: { id: taskItemId },
+          data: {
+            subtaskTotal: { decrement: 1 },
+            ...(doneDelta ? { subtaskDone: { decrement: 1 } } : {}),
+          },
+        });
+      }
+
+      if (targetParentId) {
+        await tx.subtask.update({
+          where: { id: targetParentId },
+          data: {
+            childTotal: { increment: 1 },
+            ...(doneDelta ? { childDone: { increment: 1 } } : {}),
+          },
+        });
+      } else {
+        await tx.taskItem.update({
+          where: { id: taskItemId },
+          data: {
+            subtaskTotal: { increment: 1 },
+            ...(doneDelta ? { subtaskDone: { increment: 1 } } : {}),
+          },
+        });
+      }
+    }
+
+    await tx.taskActivity.create({
+      data: {
+        organizationId,
+        taskItemId,
+        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
+        subtaskId,
+        actorId: actor.organizationUserId,
+        actorUserIdSnapshot: actor.userId,
+        actorNameSnapshot: actor.name,
+        actorAvatarSnapshot: actor.avatarUrl,
+        actorRoleSnapshot: actor.role,
+        action: 'SUBTASK_MOVED',
+        taskItemTitleSnapshot: task.title,
+        targetTitle: subtask.title,
+        ...(reparenting
+          ? { changes: { field: 'parent', before: subtask.parentSubtaskId, after: targetParentId } }
+          : {}),
+      },
+    });
+  });
+
+  return getTaskDetail(organizationId, taskItemId);
+}
+
 export async function renameSubtask(
   organizationId: string,
   taskItemId: string,

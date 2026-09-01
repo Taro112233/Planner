@@ -24,6 +24,7 @@ import {
   removeSubtask,
   clamp,
   toggleSubtaskInTask,
+  moveSubtaskInTask,
 } from '@/lib/shared/subtask-tree';
 import type { BoardTaskDto, TaskDetailDto, TaskPriority } from '@/types/planner';
 
@@ -103,6 +104,15 @@ export interface UseTaskDetailReturn {
   ) => Promise<boolean>;
   unassign: (organizationUserId: string) => Promise<boolean>;
   toggleSubtask: (subtaskId: string, desiredIsDone: boolean) => Promise<boolean>;
+  /**
+   * Reposition a subtask. `parentSubtaskId` omitted keeps the current parent;
+   * null moves it to the root.
+   */
+  moveSubtask: (
+    subtaskId: string,
+    targetIndex: number,
+    parentSubtaskId?: string | null
+  ) => Promise<boolean>;
   addSubtask: (title: string, parentSubtaskId?: string) => Promise<boolean>;
   renameSubtask: (subtaskId: string, title: string) => Promise<boolean>;
   deleteSubtask: (subtaskId: string) => Promise<boolean>;
@@ -377,6 +387,19 @@ export function useTaskDetail(
     [run, taskId]
   );
 
+  const moveSubtask = useCallback(
+    (subtaskId: string, targetIndex: number, parentSubtaskId?: string | null) =>
+      run('subtasks', `/api/board/tasks/${taskId}/subtasks/${subtaskId}/move`, {
+        method: 'PATCH',
+        body: {
+          targetIndex,
+          ...(parentSubtaskId === undefined ? {} : { parentSubtaskId }),
+        },
+        optimistic: (prev) => moveSubtaskInTask(prev, subtaskId, targetIndex, parentSubtaskId),
+      }),
+    [run, taskId]
+  );
+
   const addSubtask = useCallback(
     (title: string, parentSubtaskId?: string) =>
       run('subtasks', `/api/board/tasks/${taskId}/subtasks`, {
@@ -464,6 +487,7 @@ export function useTaskDetail(
     assign,
     unassign,
     toggleSubtask,
+    moveSubtask,
     addSubtask,
     renameSubtask,
     deleteSubtask,

@@ -1,11 +1,12 @@
 // components/PlannerShell/PlannerTopbar.tsx
-// Per-page header row inside the planner shell: sidebar toggle, title +
-// subtitle, a team-avatar stack, and an optional right-aligned action
-// (e.g. the "+ New task" button).
+// Per-page header row inside the planner shell: the breadcrumb (or a title), a
+// team-avatar stack, and an optional right-aligned action.
+//
+// Deliberately compact, like Notion's: the collapse control lives with the
+// sidebar it collapses, not here.
 'use client';
 
 import React from 'react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 
@@ -20,18 +21,22 @@ interface PlannerTopbarProps {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
+  /** Replaces the title with a path (see PlannerBreadcrumb). */
+  breadcrumb?: React.ReactNode;
 }
 
-export function PlannerTopbar({ title, subtitle, action }: PlannerTopbarProps) {
+export function PlannerTopbar({ title, subtitle, action, breadcrumb }: PlannerTopbarProps) {
   const { members } = useOrganizationMembers();
 
   return (
-    <div className="flex items-center gap-3 px-5 py-4 border-b border-border-subtle">
-      <SidebarTrigger className="-ml-1 shrink-0" />
-
-      <div className="min-w-0">
-        <h1 className="text-xl font-bold text-content-primary truncate">{title}</h1>
-        {subtitle && <p className="text-xs text-content-tertiary mt-0.5 truncate">{subtitle}</p>}
+    <div className="flex h-11 items-center gap-3 border-b border-border-subtle px-3">
+      <div className="flex min-w-0 items-baseline gap-2">
+        {breadcrumb ?? (
+          <h1 className="truncate text-sm font-semibold text-content-primary">{title}</h1>
+        )}
+        {subtitle && (
+          <p className="hidden truncate text-[11px] text-content-tertiary lg:block">{subtitle}</p>
+        )}
       </div>
 
       <div className="flex-1" />
@@ -39,7 +44,11 @@ export function PlannerTopbar({ title, subtitle, action }: PlannerTopbarProps) {
       {members.length > 0 && (
         <div className="hidden sm:flex items-center -space-x-2 shrink-0">
           {members.slice(0, 5).map((member) => (
-            <Avatar key={member.organizationUserId} size="sm" className="ring-2 ring-surface-primary">
+            <Avatar
+              key={member.organizationUserId}
+              size="sm"
+              className="size-6 ring-2 ring-surface-primary"
+            >
               {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
               <AvatarFallback className="text-[10px]">{initials(member.name)}</AvatarFallback>
             </Avatar>

@@ -38,6 +38,7 @@ const PROTECTED_ROUTE_PREFIXES: string[] = [
   '/groups',
   '/home',
   '/my-tasks',
+  '/join',
   // Add feature-specific routes below as your app grows:
   // '/settings',
   // '/reports',

@@ -94,3 +94,81 @@ export function toggleSubtaskInTask<T extends BoardTaskDto>(
         : task.subtaskDone,
   };
 }
+
+/**
+ * Move a subtask to `targetIndex` under `parentSubtaskId`, carrying its
+ * subtree. Mirrors moveSubtask on the server: depths shift by the same delta,
+ * and the counters of the old and new parent (or the card, for root subtasks)
+ * move with it.
+ *
+ * `parentSubtaskId` omitted keeps the current parent; `null` means the root.
+ */
+export function moveSubtaskInTask<T extends BoardTaskDto>(
+  task: T,
+  subtaskId: string,
+  targetIndex: number,
+  parentSubtaskId?: string | null
+): T {
+  const found = findSubtask(task.subtasks, subtaskId);
+  if (!found) return task;
+
+  const currentParentId = found.parent?.id ?? null;
+  const targetParentId = parentSubtaskId === undefined ? currentParentId : parentSubtaskId;
+  const node = found.node;
+
+  // Detaching into its own subtree would drop that branch off the tree.
+  if (targetParentId && findSubtask([node], targetParentId)) return task;
+
+  const detached = removeSubtask(task.subtasks, subtaskId);
+
+  const depthDelta =
+    (targetParentId ? (findSubtask(detached, targetParentId)?.node.depth ?? 0) + 1 : 0) - node.depth;
+
+  const shiftDepth = (target: SubtaskNodeDto): SubtaskNodeDto => ({
+    ...target,
+    depth: target.depth + depthDelta,
+    children: target.children.map(shiftDepth),
+  });
+  const moved = depthDelta === 0 ? node : shiftDepth(node);
+
+  const insert = (nodes: SubtaskNodeDto[]): SubtaskNodeDto[] => {
+    const next = [...nodes];
+    next.splice(Math.max(0, Math.min(targetIndex, next.length)), 0, moved);
+    return next;
+  };
+
+  let subtasks =
+    targetParentId === null
+      ? insert(detached)
+      : patchSubtaskTree(detached, targetParentId, (parent) => ({
+          ...parent,
+          children: insert(parent.children),
+          childTotal: parent.childTotal + 1,
+          childDone: parent.childDone + (node.isDone ? 1 : 0),
+        }));
+
+  if (currentParentId !== targetParentId && currentParentId) {
+    subtasks = patchSubtaskTree(subtasks, currentParentId, (parent) => ({
+      ...parent,
+      childTotal: Math.max(0, parent.childTotal - 1),
+      childDone: Math.max(0, parent.childDone - (node.isDone ? 1 : 0)),
+    }));
+  }
+
+  // The card's counters track root subtasks only (invariant I6), so they move
+  // only when the node enters or leaves the root level.
+  let subtaskTotal = task.subtaskTotal;
+  let subtaskDone = task.subtaskDone;
+  if (currentParentId !== targetParentId) {
+    if (currentParentId === null) {
+      subtaskTotal = Math.max(0, subtaskTotal - 1);
+      if (node.isDone) subtaskDone = Math.max(0, subtaskDone - 1);
+    }
+    if (targetParentId === null) {
+      subtaskTotal += 1;
+      if (node.isDone) subtaskDone += 1;
+    }
+  }
+
+  return { ...task, subtasks, subtaskTotal, subtaskDone };
+}

@@ -85,6 +85,7 @@ export function TaskDetailBody({
     assign,
     unassign,
     toggleSubtask,
+    moveSubtask,
     addSubtask,
     renameSubtask,
     deleteSubtask,
@@ -152,6 +153,14 @@ export function TaskDetailBody({
     [renameSubtask]
   );
 
+  const handleMoveSubtask = useCallback(
+    async (subtaskId: string, targetIndex: number, parentSubtaskId?: string | null) =>
+      reportFailure('ย้ายงานย่อยไม่สำเร็จ')(
+        await moveSubtask(subtaskId, targetIndex, parentSubtaskId)
+      ),
+    [moveSubtask]
+  );
+
   const handleDeleteSubtask = useCallback(
     async (subtaskId: string) =>
       reportFailure('ลบงานย่อยไม่สำเร็จ')(await deleteSubtask(subtaskId)),
@@ -212,6 +221,7 @@ export function TaskDetailBody({
         onAddSubtask={handleAddSubtask}
         onRenameSubtask={handleRenameSubtask}
         onDeleteSubtask={handleDeleteSubtask}
+        onMoveSubtask={handleMoveSubtask}
       />
 
       <LastCheckedBanner subtasks={task.subtasks} />

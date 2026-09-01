@@ -27,7 +27,13 @@ export function BoardTaskCard({
   onToggleSubtask,
   overlay = false,
 }: BoardTaskCardProps) {
-  const sortable = useSortable({ id: task.id, disabled: overlay });
+  const sortable = useSortable({
+    id: task.id,
+    disabled: overlay,
+    // Lets the board's collision detection prefer a card over the column
+    // droppable underneath it (see BoardPage).
+    data: { type: 'card', groupId: task.groupId },
+  });
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = sortable;
 
   const style = overlay

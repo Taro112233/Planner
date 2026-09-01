@@ -30,8 +30,17 @@ export interface UseBoardReturn {
   error: string | null;
   refetch: () => Promise<void>;
   moveTask: (taskId: string, groupId: string, targetIndex: number) => Promise<boolean>;
+  /**
+   * Local-only reposition, used while a drag is in flight so the other cards
+   * shift out of the way. Persist with commitMove when the drag ends.
+   */
+  previewMove: (taskId: string, groupId: string, targetIndex: number) => void;
+  /** Persists a position the board already shows. */
+  commitMove: (taskId: string, groupId: string, targetIndex: number) => Promise<boolean>;
   /** `priority` omitted → the server applies the schema default (MEDIUM). */
   addTask: (groupId: string, title: string, priority?: TaskPriority) => Promise<boolean>;
+  /** Create a card from a saved template, checklist and all. */
+  addTaskFromTemplate: (groupId: string, templateId: string) => Promise<boolean>;
   addGroup: (name: string, color?: GroupColorKey) => Promise<boolean>;
   updateGroup: (groupId: string, patch: GroupPatch) => Promise<boolean>;
   reorderGroups: (orderedGroupIds: string[]) => Promise<boolean>;
@@ -100,47 +109,59 @@ export function useBoard(planId?: string): UseBoardReturn {
 
   // Optimistically relocates a task within local state, then persists the
   // move; on failure it refetches to discard the optimistic change.
-  const moveTask = useCallback(
-    async (taskId: string, groupId: string, targetIndex: number) => {
-      setBoard((prev) => {
-        if (!prev) return prev;
+  const previewMove = useCallback((taskId: string, groupId: string, targetIndex: number) => {
+    setBoard((prev) => {
+      if (!prev) return prev;
 
-        let moved: BoardTaskDto | undefined;
-        const groups = prev.groups.map((group) => ({
-          ...group,
-          taskItems: group.taskItems.filter((task) => {
-            if (task.id === taskId) {
-              moved = task;
-              return false;
-            }
-            return true;
-          }),
-        }));
+      let moved: BoardTaskDto | undefined;
+      const groups = prev.groups.map((group) => ({
+        ...group,
+        taskItems: group.taskItems.filter((task) => {
+          if (task.id === taskId) {
+            moved = task;
+            return false;
+          }
+          return true;
+        }),
+      }));
 
-        if (!moved) return prev;
+      if (!moved) return prev;
 
-        const nextGroups = groups.map((group) => {
-          if (group.id !== groupId) return group;
-          const taskItems = [...group.taskItems];
-          taskItems.splice(targetIndex, 0, { ...moved!, groupId });
-          return { ...group, taskItems };
-        });
-
-        return { ...prev, groups: nextGroups };
+      const nextGroups = groups.map((group) => {
+        if (group.id !== groupId) return group;
+        const taskItems = [...group.taskItems];
+        taskItems.splice(targetIndex, 0, { ...moved!, groupId });
+        return { ...group, taskItems };
       });
 
+      return { ...prev, groups: nextGroups };
+    });
+  }, []);
+
+  const commitMove = useCallback(
+    async (taskId: string, groupId: string, targetIndex: number) => {
       const result = await mutate<{ groupId: string; targetIndex: number }>(
         `/api/board/tasks/${taskId}/move`,
         { method: 'PATCH', body: { groupId, targetIndex } }
       );
 
       if (!result) {
+        // The board is showing a position the server rejected — reload rather
+        // than guess at what it should look like.
         await fetchBoard();
         return false;
       }
       return true;
     },
     [mutate, fetchBoard]
+  );
+
+  const moveTask = useCallback(
+    async (taskId: string, groupId: string, targetIndex: number) => {
+      previewMove(taskId, groupId, targetIndex);
+      return commitMove(taskId, groupId, targetIndex);
+    },
+    [previewMove, commitMove]
   );
 
   const addTask = useCallback(
@@ -162,6 +183,22 @@ export function useBoard(planId?: string): UseBoardReturn {
           ),
         };
       });
+      return true;
+    },
+    [mutate]
+  );
+
+  const addTaskFromTemplate = useCallback(
+    async (groupId: string, templateId: string) => {
+      const created = await mutate<{ groupId: string; templateId: string }>('/api/board/tasks', {
+        method: 'POST',
+        body: { groupId, templateId },
+      });
+      if (!created) return false;
+
+      // The response is a TaskDetailDto (the card plus description/activities),
+      // so fold it in the same way a panel edit is folded in.
+      applyTaskUpdateRef.current?.(created as TaskDetailDto);
       return true;
     },
     [mutate]
@@ -359,7 +396,10 @@ export function useBoard(planId?: string): UseBoardReturn {
     error,
     refetch: fetchBoard,
     moveTask,
+    previewMove,
+    commitMove,
     addTask,
+    addTaskFromTemplate,
     addGroup,
     updateGroup,
     reorderGroups,
