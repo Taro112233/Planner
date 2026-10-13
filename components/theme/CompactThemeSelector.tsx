@@ -31,7 +31,8 @@ export function CompactThemeSelector() {
           variant="outline"
           size="icon"
           className="h-9 w-9"
-          title="Change Theme"
+          title="เลือกธีมและสี"
+          aria-label="เลือกธีมและสี"
         >
           <AnimatePresence mode="wait">
             {isDark ? (
@@ -96,7 +97,8 @@ export function CompactThemeSelector() {
                 "text-content-secondary hover:bg-black/10 dark:hover:bg-white/[0.12]",
                 "transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               )}
-              title={isDark ? "Switch to Light" : "Switch to Dark"}
+              title={isDark ? "เปลี่ยนเป็นโหมดสว่าง" : "เปลี่ยนเป็นโหมดมืด"}
+              aria-label={isDark ? "เปลี่ยนเป็นโหมดสว่าง" : "เปลี่ยนเป็นโหมดมืด"}
             >
               <AnimatePresence mode="wait">
                 {isDark ? (
@@ -140,6 +142,8 @@ export function CompactThemeSelector() {
                   key={accent.id}
                   onClick={() => changeAccent(accent.id)}
                   title={accent.name}
+                  aria-label={`สี ${accent.name}`}
+                  aria-pressed={isActive}
                   className={cn(
                     "relative w-full aspect-square rounded-[var(--radius-small-semantic)]",
                     "transition-all duration-150 focus:outline-none",

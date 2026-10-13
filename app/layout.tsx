@@ -21,8 +21,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "NextJS Starter",
-  description: "template for nextjs apps",
+  title: "Planner — พื้นที่สำหรับทุกแผนของคุณ",
+  description: "รวมแผน งาน และทีมไว้ในที่เดียว จัดระเบียบงาน ติดตามความคืบหน้า และเดินหน้าไปด้วยกันกับ Planner",
 };
 
 export default function RootLayout({

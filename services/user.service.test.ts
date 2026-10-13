@@ -92,7 +92,7 @@ describe('listUsers', () => {
 
   it('normalises unknown roles to USER', async () => {
     prismaMock.user.findMany.mockResolvedValue([
-      makeUser({ role: 'UNKNOWN_LEGACY' as any }),
+      makeUser({ role: 'UNKNOWN_LEGACY' as UserRole }),
     ]);
     prismaMock.user.count.mockResolvedValue(1);
 
