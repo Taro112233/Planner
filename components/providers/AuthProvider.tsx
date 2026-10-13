@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleSignInGoogle = async () => {
     const result = await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/dashboard",
+      callbackURL: "/home",
     });
 
     if (result.error) {

@@ -2,6 +2,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Overridable so a second build (e.g. the load test's, scripts/load-test)
+  // can run beside `pnpm dev` without both writing into .next.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   images: {
     remotePatterns: [
       {

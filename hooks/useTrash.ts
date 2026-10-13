@@ -1,12 +1,13 @@
 // hooks/useTrash.ts
-// Fetches the organization's trashed tasks (/api/board/trash) and exposes
+// Fetches trashed tasks (/api/board/trash — the workspace or one group's) and exposes
 // restore / permanent-delete actions, removing the affected row from local
 // state on success. Mirrors useBoardGroups.ts's fetch shape plus a
 // useMutation-backed action per verb, matching useTaskDetail.ts's convention.
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { invalidateApiResource, useApiResource } from '@/hooks/useApiResource';
 import { useMutation } from '@/hooks/useMutation';
 import type { TrashedTaskDto } from '@/types/planner';
 
@@ -20,55 +21,47 @@ export interface UseTrashReturn {
   permanentlyDeleteTask: (taskId: string) => Promise<boolean>;
 }
 
-export function useTrash(): UseTrashReturn {
-  const [tasks, setTasks] = useState<TrashedTaskDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+/** @param scopeQuery  `planGroupId=…` to list one group's trash, or ''. */
+export function useTrash(scopeQuery = ''): UseTrashReturn {
+  const endpoint = scopeQuery ? `/api/board/trash?${scopeQuery}` : '/api/board/trash';
+  const { data, loading, error, refetch, setData } = useApiResource<TrashedTaskDto[]>(endpoint);
   const { mutate, loading: mutating } = useMutation();
 
-  const fetchTasks = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch('/api/board/trash', { credentials: 'include' });
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error ?? 'Failed to load trash');
-      }
-
-      setTasks(data.data as TrashedTaskDto[]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load trash');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+  const removeRow = useCallback(
+    (taskId: string) => setData((current) => (current ?? []).filter((t) => t.id !== taskId)),
+    [setData]
+  );
 
   const restoreTask = useCallback(
     async (taskId: string) => {
       const result = await mutate(`/api/board/tasks/${taskId}/restore`, { method: 'PATCH' });
       if (!result) return false;
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      removeRow(taskId);
+      // The card is back on a board; boards and home must not show stale copies.
+      invalidateApiResource('/api/home');
+      invalidateApiResource('/api/my-tasks');
       return true;
     },
-    [mutate]
+    [mutate, removeRow]
   );
 
   const permanentlyDeleteTask = useCallback(
     async (taskId: string) => {
       const result = await mutate(`/api/board/tasks/${taskId}/permanent`, { method: 'DELETE' });
       if (!result) return false;
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      removeRow(taskId);
       return true;
     },
-    [mutate]
+    [mutate, removeRow]
   );
 
-  return { tasks, loading, error, mutating, refetch: fetchTasks, restoreTask, permanentlyDeleteTask };
+  return {
+    tasks: data ?? [],
+    loading,
+    error,
+    mutating,
+    refetch,
+    restoreTask,
+    permanentlyDeleteTask,
+  };
 }

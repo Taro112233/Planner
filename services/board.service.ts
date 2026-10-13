@@ -237,10 +237,16 @@ function computeInsertPosition(
  * list activity across a group's plans.
  */
 async function resolvePlanSnapshot(
+  // Always the caller's transaction client: every caller writes activity
+  // inside $transaction, and a query on the global client there would need a
+  // second pooled connection while holding the first (enough of those at once
+  // and the pool deadlocks), and could not see a card created in the same
+  // transaction.
+  db: Prisma.TransactionClient,
   organizationId: string,
   taskItemId: string
 ): Promise<{ planId: string | null; planNameSnapshot: string | null }> {
-  const row = await prisma.taskItem.findFirst({
+  const row = await db.taskItem.findFirst({
     where: { id: taskItemId, organizationId },
     select: { group: { select: { planId: true, plan: { select: { name: true } } } } },
   });
@@ -596,7 +602,7 @@ export async function deleteGroup(
         data: {
           organizationId,
           taskItemId: card.id,
-          ...(await resolvePlanSnapshot(organizationId, card.id)),
+          ...(await resolvePlanSnapshot(tx, organizationId, card.id)),
           batchId,
           actorId: actor.organizationUserId,
           actorUserIdSnapshot: actor.userId,
@@ -740,7 +746,7 @@ export async function createTask(
       data: {
         organizationId,
         taskItemId: created.id,
-        ...(await resolvePlanSnapshot(organizationId, created.id)),
+        ...(await resolvePlanSnapshot(tx, organizationId, created.id)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -807,7 +813,7 @@ export async function moveTask(
       data: {
         organizationId,
         taskItemId: taskId,
-        ...(await resolvePlanSnapshot(organizationId, taskId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -853,7 +859,7 @@ export async function updateTaskTitle(
       data: {
         organizationId,
         taskItemId: taskId,
-        ...(await resolvePlanSnapshot(organizationId, taskId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -894,7 +900,7 @@ export async function updateTaskDescription(
       data: {
         organizationId,
         taskItemId: taskId,
-        ...(await resolvePlanSnapshot(organizationId, taskId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -935,7 +941,7 @@ export async function updateTaskPriority(
       data: {
         organizationId,
         taskItemId: taskId,
-        ...(await resolvePlanSnapshot(organizationId, taskId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -979,7 +985,7 @@ export async function updateTaskDates(
       data: {
         organizationId,
         taskItemId: taskId,
-        ...(await resolvePlanSnapshot(organizationId, taskId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1136,7 +1142,7 @@ export async function setSubtaskDone(
       data: {
         organizationId,
         taskItemId,
-        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskItemId)),
         subtaskId,
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
@@ -1187,7 +1193,7 @@ export async function assignTask(
         data: {
           organizationId,
           taskItemId: taskId,
-          ...(await resolvePlanSnapshot(organizationId, taskId)),
+          ...(await resolvePlanSnapshot(tx, organizationId, taskId)),
           actorId: actor.organizationUserId,
           actorUserIdSnapshot: actor.userId,
           actorNameSnapshot: actor.name,
@@ -1237,7 +1243,7 @@ export async function unassignTask(
       data: {
         organizationId,
         taskItemId: taskId,
-        ...(await resolvePlanSnapshot(organizationId, taskId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1353,7 +1359,7 @@ export async function addSubtask(
       data: {
         organizationId,
         taskItemId,
-        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskItemId)),
         subtaskId: parentSubtaskId ?? undefined,
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
@@ -1536,7 +1542,7 @@ export async function moveSubtask(
       data: {
         organizationId,
         taskItemId,
-        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskItemId)),
         subtaskId,
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
@@ -1585,7 +1591,7 @@ export async function renameSubtask(
       data: {
         organizationId,
         taskItemId,
-        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskItemId)),
         subtaskId,
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
@@ -1656,7 +1662,7 @@ export async function deleteSubtask(
       data: {
         organizationId,
         taskItemId,
-        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskItemId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1707,7 +1713,7 @@ export async function deleteTask(
       data: {
         organizationId,
         taskItemId,
-        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskItemId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1748,7 +1754,7 @@ export async function restoreTask(
       data: {
         organizationId,
         taskItemId,
-        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskItemId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1788,7 +1794,7 @@ export async function permanentlyDeleteTask(
       data: {
         organizationId,
         taskItemId,
-        ...(await resolvePlanSnapshot(organizationId, taskItemId)),
+        ...(await resolvePlanSnapshot(tx, organizationId, taskItemId)),
         actorId: actor.organizationUserId,
         actorUserIdSnapshot: actor.userId,
         actorNameSnapshot: actor.name,
@@ -1805,17 +1811,27 @@ export async function permanentlyDeleteTask(
   return { id: taskItemId };
 }
 
-/** List every trashed task in the organization, most recently deleted first. */
-export async function listTrashedTasks(organizationId: string): Promise<TrashedTaskDto[]> {
+/**
+ * List trashed tasks, most recently deleted first — the whole organization,
+ * or only those in one group's plans.
+ */
+export async function listTrashedTasks(
+  organizationId: string,
+  planGroupId?: string
+): Promise<TrashedTaskDto[]> {
   const rows = await prisma.taskItem.findMany({
-    where: { organizationId, deletedAt: { not: null } },
+    where: {
+      organizationId,
+      deletedAt: { not: null },
+      ...(planGroupId ? { group: { plan: { planGroupId } } } : {}),
+    },
     orderBy: { deletedAt: 'desc' },
     select: {
       id: true,
       title: true,
       priority: true,
       deletedAt: true,
-      group: { select: { name: true } },
+      group: { select: { name: true, plan: { select: { name: true } } } },
       deletedBy: { select: { firstName: true, lastName: true } },
     },
   });
@@ -1825,6 +1841,7 @@ export async function listTrashedTasks(organizationId: string): Promise<TrashedT
     title: row.title,
     priority: row.priority,
     groupName: row.group.name,
+    planName: row.group.plan?.name ?? null,
     deletedAt: row.deletedAt!.toISOString(),
     deletedByName: row.deletedBy ? `${row.deletedBy.firstName} ${row.deletedBy.lastName}`.trim() : 'Unknown',
   }));

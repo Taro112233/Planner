@@ -59,24 +59,18 @@ function uniqueConstraintError() {
 // ─────────────────────────────────────────────
 
 describe('getOrCreateDefaultPlan', () => {
-  it('returns the existing plan and adopts any columns still missing one', async () => {
+  it('returns the existing plan without creating anything', async () => {
     prismaMock.plan.findFirst.mockResolvedValue(PLAN_ROW as never);
-    prismaMock.group.updateMany.mockResolvedValue({ count: 3 } as never);
 
     const result = await getOrCreateDefaultPlan('org-1');
 
     expect(result.id).toBe('plan-1');
     expect(prismaMock.plan.create).not.toHaveBeenCalled();
-    // Columns created before Plan existed dangle with planId null.
-    expect(prismaMock.group.updateMany).toHaveBeenCalledWith({
-      where: { organizationId: 'org-1', planId: null },
-      data: { planId: 'plan-1' },
-    });
+    expect(prismaMock.group.createMany).not.toHaveBeenCalled();
   });
 
   it('ignores soft-deleted plans when resolving the default', async () => {
     prismaMock.plan.findFirst.mockResolvedValue(PLAN_ROW as never);
-    prismaMock.group.updateMany.mockResolvedValue({ count: 0 } as never);
 
     await getOrCreateDefaultPlan('org-1');
 
@@ -85,10 +79,10 @@ describe('getOrCreateDefaultPlan', () => {
     );
   });
 
-  it('provisions a plan and adopts orphan columns when the org has none', async () => {
+  it('provisions a plan with starter columns when the org has none', async () => {
     prismaMock.plan.findFirst.mockResolvedValue(null);
     prismaMock.plan.create.mockResolvedValue(PLAN_ROW as never);
-    prismaMock.group.updateMany.mockResolvedValue({ count: 3 } as never);
+    prismaMock.group.createMany.mockResolvedValue({ count: 3 } as never);
     mockTransactionPassthrough();
 
     const result = await getOrCreateDefaultPlan('org-1');
@@ -99,9 +93,10 @@ describe('getOrCreateDefaultPlan', () => {
         data: { organizationId: 'org-1', name: DEFAULT_PLAN_NAME, sortOrder: 0 },
       })
     );
-    expect(prismaMock.group.updateMany).toHaveBeenCalledWith({
-      where: { organizationId: 'org-1', planId: null },
-      data: { planId: 'plan-1' },
+    expect(prismaMock.group.createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({ organizationId: 'org-1', planId: 'plan-1' }),
+      ]),
     });
   });
 });
@@ -243,6 +238,29 @@ describe('createPlan', () => {
     prismaMock.plan.create.mockRejectedValue(uniqueConstraintError());
 
     await expect(createPlan('org-1', 'ซ้ำ')).rejects.toThrow('Duplicate entry');
+  });
+
+  it("seeds a template's columns, in order, and takes its colour", async () => {
+    await createPlan('org-1', 'ตรวจรับงาน', { templateId: 'qa' });
+
+    expect(prismaMock.plan.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ color: 'orange' }) })
+    );
+    expect(prismaMock.group.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ name: 'ส่งตรวจ', sortOrder: 0, planId: 'plan-1' }),
+        expect.objectContaining({ name: 'กำลังตรวจ', sortOrder: 1 }),
+        expect.objectContaining({ name: 'แก้ไข', sortOrder: 2 }),
+        expect.objectContaining({ name: 'อนุมัติแล้ว', sortOrder: 3 }),
+      ],
+    });
+  });
+
+  it('throws "Plan template not found" for an unknown template', async () => {
+    await expect(createPlan('org-1', 'x', { templateId: 'nope' })).rejects.toThrow(
+      'Plan template not found'
+    );
+    expect(prismaMock.plan.create).not.toHaveBeenCalled();
   });
 });
 

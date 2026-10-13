@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { AppHeader } from "@/components/shared/AppHeader";
 import { CookieConsent } from "@/components/CookieConsent";
 import { AuthGuard } from "@/components/AuthGuard";
 
@@ -59,7 +58,6 @@ export default function RootLayout({
       <body className={inter.variable} suppressHydrationWarning>
           <AuthGuard>
             <div className="min-h-screen bg-background">
-              <AppHeader />
               <main className="relative">{children}</main>
             </div>
             <Toaster />

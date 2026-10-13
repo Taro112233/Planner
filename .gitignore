@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 /generated/prisma
+
+# load-test build (scripts/load-test)
+/.next-load/

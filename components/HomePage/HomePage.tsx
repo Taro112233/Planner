@@ -10,16 +10,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PlannerTopbar } from '@/components/PlannerShell';
 import { TaskActivityFeed } from '@/components/TaskDetail';
 import { MyTaskRow } from '@/components/MyTasksPage';
-import { resolveGroupColor } from '@/lib/shared/group-colors';
 import { useHomeSummary } from '@/hooks/useHomeSummary';
 import { usePlanNav } from '@/hooks/usePlanNav';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { HomePageSkeleton } from './HomePageSkeleton';
 import { StatTile } from './StatTile';
+import { HomePlanProgress } from './HomePlanProgress';
 
 export function HomePage() {
   const { data, loading, error } = useHomeSummary();
-  const { plans } = usePlanNav();
+  const { planGroups, plans } = usePlanNav();
   const { user } = useCurrentUser();
 
   if (loading && !data) return <HomePageSkeleton />;
@@ -39,11 +39,11 @@ export function HomePage() {
   const subtitle = user ? `ภาพรวมงานของคุณวันนี้ · ${user.fullName}` : 'ภาพรวมงานของคุณวันนี้';
 
   return (
-    <div className="min-h-screen bg-surface-primary">
+    <div className="min-h-screen bg-surface-canvas">
       <PlannerTopbar title="หน้าแรก" subtitle={subtitle} />
 
-      <div className="space-y-6 px-5 py-5">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="space-y-3.5 px-5 pb-6 pt-1">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <StatTile label="งานของฉันที่ค้าง" value={data.myOpenCount} hint="ทุกแผนงาน" />
           <StatTile
             label="เลยกำหนด"
@@ -65,76 +65,48 @@ export function HomePage() {
           />
         </div>
 
-        <section
-          aria-label="ครบกำหนดเร็ว ๆ นี้"
-          className="rounded-xl border border-border-subtle bg-surface-secondary"
-        >
-          <div className="flex items-center justify-between gap-2 border-b border-border-subtle px-4 py-2.5">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
-              ครบกำหนดเร็ว ๆ นี้
-            </h2>
-            <span className="text-[11px] text-content-tertiary">ทุกแผนงาน</span>
-          </div>
+        <div className="grid items-start gap-3.5 lg:grid-cols-[1.35fr_1fr]">
+          <section aria-label="ครบกำหนดเร็ว ๆ นี้" className="wcard px-4 py-3.5">
+            <div className="mb-1 flex items-center gap-2">
+              <h2 className="text-[12.5px] font-semibold text-content-secondary">ครบกำหนดเร็ว ๆ นี้</h2>
+              <span className="flex-1" />
+              <span className="text-[11.5px] text-content-tertiary">ทุกแผนงาน</span>
+            </div>
 
-          {data.dueSoon.length > 0 ? (
-            <ul className="p-1.5">
-              {data.dueSoon.map((task) => (
-                <MyTaskRow
-                  key={task.id}
-                  task={task}
-                  overdue={task.dueDate !== null && new Date(task.dueDate).getTime() < now}
-                />
-              ))}
-            </ul>
-          ) : (
-            <p className="px-4 py-3 text-xs text-content-tertiary">ยังไม่มีงานที่ใกล้ครบกำหนด</p>
-          )}
-        </section>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section aria-label="ความคืบหน้าแผนงาน">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-content-tertiary">
-              ความคืบหน้าแผนงาน
-            </h2>
-
-            {plans.length > 0 ? (
-              <ul className="space-y-3">
-                {plans.map((plan) => (
-                  <li key={plan.id}>
-                    <Link href={`/plans/${plan.id}`} className="group block">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="size-2.5 shrink-0 rounded-[3px]"
-                          style={{ backgroundColor: resolveGroupColor(plan.color) }}
-                        />
-                        <span className="min-w-0 flex-1 truncate text-sm text-content-primary group-hover:underline">
-                          {plan.name}
-                        </span>
-                        <span className="text-[11px] text-content-tertiary tabular-nums">
-                          {plan.completionPct}%
-                        </span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-tertiary">
-                        <div
-                          className="h-full rounded-full bg-interactive-primary transition-all duration-500"
-                          style={{ width: `${plan.completionPct}%` }}
-                        />
-                      </div>
-                    </Link>
-                  </li>
+            {data.dueSoon.length > 0 ? (
+              <ul>
+                {data.dueSoon.map((task) => (
+                  <MyTaskRow
+                    key={task.id}
+                    task={task}
+                    overdue={task.dueDate !== null && new Date(task.dueDate).getTime() < now}
+                  />
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-content-tertiary">ยังไม่มีแผนงาน</p>
+              <p className="py-3 text-xs text-content-tertiary">ยังไม่มีงานที่ใกล้ครบกำหนด</p>
             )}
           </section>
 
-          <section aria-label="กิจกรรมล่าสุด">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-content-tertiary">
-              กิจกรรมล่าสุด
-            </h2>
-            <TaskActivityFeed items={data.activities} emptyLabel="ยังไม่มีกิจกรรม" />
-          </section>
+          <div className="flex flex-col gap-3.5">
+            <section aria-label="ความคืบหน้าแผนงาน" className="wcard px-4 py-3.5">
+              <h2 className="mb-3 text-[12.5px] font-semibold text-content-secondary">
+                ความคืบหน้าแผนงาน
+              </h2>
+              <HomePlanProgress planGroups={planGroups} plans={plans} />
+            </section>
+
+            <section aria-label="กิจกรรมล่าสุด" className="wcard px-4 py-3.5">
+              <div className="mb-3 flex items-center gap-2">
+                <h2 className="text-[12.5px] font-semibold text-content-secondary">กิจกรรมล่าสุด</h2>
+                <span className="flex-1" />
+                <Link href="/audit" className="text-[11.5px] text-interactive-primary hover:underline">
+                  ดูทั้งหมด ›
+                </Link>
+              </div>
+              <TaskActivityFeed items={data.activities} emptyLabel="ยังไม่มีกิจกรรม" />
+            </section>
+          </div>
         </div>
       </div>
     </div>

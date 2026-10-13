@@ -99,9 +99,7 @@ export async function getOrCreateDefaultOrganization(
       },
     });
 
-    // Columns hang off a Plan, never off the organization directly. Older
-    // organizations predate Plan; getOrCreateDefaultPlan adopts their columns
-    // on first use (services/plan.service.ts).
+    // Columns hang off a Plan, never off the organization directly.
     const plan = await tx.plan.create({
       data: { organizationId: organization.id, name: DEFAULT_PLAN_NAME, sortOrder: 0 },
       select: { id: true },

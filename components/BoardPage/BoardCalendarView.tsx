@@ -21,7 +21,7 @@ interface DayCell {
   isToday: boolean;
 }
 
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_LABELS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
 function buildGrid(anchor: Date): DayCell[] {
   const { start, end } = getMonthRange(anchor);
@@ -77,7 +77,7 @@ export function BoardCalendarView({ board, onOpenTask }: BoardCalendarViewProps)
           <ChevronLeft size={14} />
         </Button>
         <span className="text-sm font-medium text-content-primary min-w-32 text-center">
-          {anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+          {anchor.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
         </span>
         <Button
           variant="outline"
@@ -88,7 +88,7 @@ export function BoardCalendarView({ board, onOpenTask }: BoardCalendarViewProps)
           <ChevronRight size={14} />
         </Button>
         <Button variant="ghost" size="sm" className="h-8" onClick={() => setAnchor(new Date())}>
-          Today
+          วันนี้
         </Button>
       </div>
 

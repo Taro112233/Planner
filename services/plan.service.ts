@@ -15,6 +15,7 @@
 import { prisma } from '@/lib/server/prisma';
 import type { Prisma } from '@prisma/client';
 import type { ActorInput } from '@/services/board.service';
+import { findPlanTemplate } from '@/lib/shared/plan-templates';
 import type {
   PlanDto,
   PlanGroupDto,
@@ -34,6 +35,7 @@ export const DEFAULT_PLAN_NAME = 'แผนงานหลัก';
 const DUPLICATE_ENTRY = 'Duplicate entry';
 const PLAN_NOT_FOUND = 'Plan not found';
 const PLAN_GROUP_NOT_FOUND = 'Plan group not found';
+export const PLAN_TEMPLATE_NOT_FOUND = 'Plan template not found';
 const CANNOT_DELETE_LAST_PLAN = 'Cannot delete the last plan';
 const ONLY_OWNER_CAN_MANAGE_JOIN_CODE = 'Only the group owner can manage the join code';
 
@@ -120,13 +122,9 @@ function isUniqueConstraintError(error: unknown): boolean {
 // ─────────────────────────────────────────────
 
 /**
- * Resolve the plan a board request acts on, provisioning one the first time.
- *
- * Organizations created before Plan existed own columns with `planId = null`.
- * Rather than requiring an offline backfill before the app works, the first
- * request adopts those orphans into a new default plan — the same lazy
- * provisioning getOrCreateDefaultOrganization already uses. Running
- * scripts/backfill-plans.ts does the same thing in bulk, ahead of time.
+ * Resolve the plan a board request acts on, provisioning one (with the
+ * starter columns) when the organization has none left — the same lazy
+ * provisioning getOrCreateDefaultOrganization uses.
  */
 export async function getOrCreateDefaultPlan(organizationId: string): Promise<PlanDto> {
   const existing = await prisma.plan.findFirst({
@@ -134,16 +132,7 @@ export async function getOrCreateDefaultPlan(organizationId: string): Promise<Pl
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     select: PLAN_SELECT,
   });
-
-  if (existing) {
-    // A plan can exist while older columns still dangle (a half-finished
-    // backfill, or columns created before the plan). Adopt them.
-    await prisma.group.updateMany({
-      where: { organizationId, planId: null },
-      data: { planId: existing.id },
-    });
-    return existing;
-  }
+  if (existing) return existing;
 
   return prisma.$transaction(async (tx) => {
     const plan = await tx.plan.create({
@@ -151,9 +140,14 @@ export async function getOrCreateDefaultPlan(organizationId: string): Promise<Pl
       select: PLAN_SELECT,
     });
 
-    await tx.group.updateMany({
-      where: { organizationId, planId: null },
-      data: { planId: plan.id },
+    await tx.group.createMany({
+      data: DEFAULT_PLAN_COLUMNS.map((column) => ({
+        organizationId,
+        planId: plan.id,
+        name: column.name,
+        color: column.color,
+        sortOrder: column.sortOrder,
+      })),
     });
 
     return plan;
@@ -239,9 +233,22 @@ export async function listPlans(
 export async function createPlan(
   organizationId: string,
   name: string,
-  options: { planGroupId?: string | null; color?: string | null; actor?: ActorInput } = {}
+  options: {
+    planGroupId?: string | null;
+    color?: string | null;
+    /** Start from a built-in template's columns instead of the default three. */
+    templateId?: string;
+    actor?: ActorInput;
+  } = {}
 ): Promise<PlanDto> {
-  const { planGroupId = null, color = null, actor } = options;
+  const { planGroupId = null, actor } = options;
+
+  const template = options.templateId ? findPlanTemplate(options.templateId) : undefined;
+  if (options.templateId && !template) throw new Error(PLAN_TEMPLATE_NOT_FOUND);
+  const color = options.color ?? template?.color ?? null;
+  const columns = template
+    ? template.columns.map((column, index) => ({ ...column, sortOrder: index }))
+    : DEFAULT_PLAN_COLUMNS;
 
   if (planGroupId) {
     const planGroup = await prisma.planGroup.findFirst({
@@ -271,7 +278,7 @@ export async function createPlan(
       });
 
       await tx.group.createMany({
-        data: DEFAULT_PLAN_COLUMNS.map((column) => ({
+        data: columns.map((column) => ({
           organizationId,
           planId: plan.id,
           name: column.name,
@@ -287,7 +294,7 @@ export async function createPlan(
           planName: plan.name,
           actor,
           action: 'PLAN_CREATED',
-          changes: { planGroupId },
+          changes: { planGroupId, templateId: template?.id ?? null },
         });
       }
 

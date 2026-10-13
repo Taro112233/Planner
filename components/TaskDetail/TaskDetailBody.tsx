@@ -61,8 +61,8 @@ function reportFailure(label: string) {
 /** One labelled row inside the field card — label left, control right. */
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5 px-3 py-2.5 sm:flex-row sm:items-start sm:gap-3">
-      <span className="w-24 shrink-0 pt-1 text-xs text-content-tertiary">{label}</span>
+    <div className="flex flex-col gap-1.5 py-1 sm:flex-row sm:items-start sm:gap-2">
+      <span className="w-[76px] shrink-0 pt-1 text-xs text-content-tertiary">{label}</span>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
@@ -168,7 +168,7 @@ export function TaskDetailBody({
   );
 
   const fieldCard = (
-    <div className="divide-y divide-border-subtle rounded-xl border border-border-subtle bg-surface-secondary">
+    <div className="flex flex-col gap-1 rounded-[11px] bg-surface-secondary px-3 py-2.5">
       <FieldRow label="สถานะ">
         {/* Not gated on isPending: the chip highlight moves optimistically, so
             graying the row out would be the only thing left that reads as a

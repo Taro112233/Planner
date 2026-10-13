@@ -1,16 +1,11 @@
 // components/PlannerShell/PlannerSidebar.tsx
 // Left nav, following the mockup's structure (Planner v2.dc.html): a search
 // box, the main destinations, "กลุ่มของฉัน", "แผนงาน", "การจัดการ", and the
-// user chip in the footer.
-//
-// Destinations whose pages don't exist yet (การแจ้งเตือน, รายงาน,
-// ประวัติตรวจสอบ, สมาชิก & สิทธิ์, เทมเพลต) render as disabled rows so
-// the rail matches the mockup without shipping dead links — the same call the
-// search box already makes.
+// user chip in the footer (account menu: workspaces, settings, sign-out).
 'use client';
 
 import React, { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { FolderPlus, Plus, UserPlus } from 'lucide-react';
 import {
@@ -29,7 +24,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePlanNav } from '@/hooks/usePlanNav';
-import type { PlanSummaryDto } from '@/types/planner';
+import { useInboxUnread } from '@/hooks/useInboxUnread';
+import { invalidateApiResource } from '@/hooks/useApiResource';
+import { usePlannerScope } from '@/hooks/usePlannerScope';
 import { NavStaticSection, type StaticNavItem } from './NavStaticSection';
 import { PlanNavSection, planGroupToNavItem, planToNavItem } from './PlanNavSection';
 import { JoinGroupDialog } from './JoinGroupDialog';
@@ -51,14 +48,40 @@ const MAIN_NAV: StaticNavItem[] = [
     color: 'var(--color-group-orange)',
     href: '/my-tasks',
   },
-  { key: 'inbox', label: 'การแจ้งเตือน', icon: '✉', color: 'var(--color-group-pink)' },
+  // Not a page: it leaves the group in scope (see usePlannerScope).
+  { key: 'workspace', label: 'Workspace ของฉัน', icon: '◉', color: 'var(--color-group-teal)' },
+  {
+    key: 'inbox',
+    label: 'การแจ้งเตือน',
+    icon: '✉',
+    color: 'var(--color-group-pink)',
+    href: '/inbox',
+  },
 ];
 
 const ADMIN_NAV: StaticNavItem[] = [
-  { key: 'reports', label: 'รายงาน', icon: '▤', color: 'var(--color-group-teal)' },
-  { key: 'audit', label: 'ประวัติตรวจสอบ', icon: '◔', color: 'var(--color-group-purple)' },
-  { key: 'members', label: 'สมาชิก & สิทธิ์', icon: '⚿', color: 'var(--color-group-slate)' },
-  { key: 'templates', label: 'เทมเพลต', icon: '⌗', color: 'var(--color-group-green)' },
+  { key: 'reports', label: 'รายงาน', icon: '▤', color: 'var(--color-group-teal)', href: '/reports' },
+  {
+    key: 'audit',
+    label: 'ประวัติตรวจสอบ',
+    icon: '◔',
+    color: 'var(--color-group-purple)',
+    href: '/audit',
+  },
+  {
+    key: 'members',
+    label: 'สมาชิก & สิทธิ์',
+    icon: '⚿',
+    color: 'var(--color-group-slate)',
+    href: '/members',
+  },
+  {
+    key: 'templates',
+    label: 'เทมเพลต',
+    icon: '⌗',
+    color: 'var(--color-group-green)',
+    href: '/templates',
+  },
   {
     key: 'trash',
     label: 'ถังขยะ',
@@ -67,23 +90,6 @@ const ADMIN_NAV: StaticNavItem[] = [
     href: '/board/trash',
   },
 ];
-
-/**
- * The group the user is working in, read straight off the URL: /groups/[id],
- * or the group owning the plan at /plans/[id]. Null everywhere else (home, my
- * tasks, trash), where the plan list falls back to ungrouped plans.
- */
-function useActiveGroupId(pathname: string, plans: PlanSummaryDto[]): string | null {
-  const groupMatch = pathname.match(/^\/groups\/([^/]+)/);
-  if (groupMatch) return groupMatch[1];
-
-  const planMatch = pathname.match(/^\/plans\/([^/]+)/);
-  if (planMatch) {
-    return plans.find((plan) => plan.id === planMatch[1])?.planGroupId ?? null;
-  }
-
-  return null;
-}
 
 export function PlannerSidebar() {
   const pathname = usePathname();
@@ -99,9 +105,23 @@ export function PlannerSidebar() {
     refetch,
   } = usePlanNav();
   const [joining, setJoining] = useState(false);
+  const inboxUnread = useInboxUnread();
 
-  const activeGroupId = useActiveGroupId(pathname, plans);
-  const activeGroup = planGroups.find((group) => group.id === activeGroupId) ?? null;
+  const router = useRouter();
+  // The group being worked in survives moving to other pages (see
+  // usePlannerScope); null is "Workspace ของฉัน".
+  const { scopeGroupId: activeGroupId, scopeGroup: activeGroup, setScopeGroupId } =
+    usePlannerScope();
+
+  const enterPersonalWorkspace = () => {
+    setScopeGroupId(null);
+    // A page that belongs to a group would put the scope straight back.
+    const onGroupPage =
+      pathname.startsWith('/groups/') ||
+      (pathname.startsWith('/plans/') &&
+        plans.some((plan) => pathname === `/plans/${plan.id}` && plan.planGroupId));
+    if (onGroupPage) router.push('/home');
+  };
   // Inside a group you see that group's plans; outside it, the ones that
   // belong to no group at all.
   const visiblePlans = plans.filter((plan) => plan.planGroupId === activeGroupId);
@@ -115,7 +135,16 @@ export function PlannerSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden">
-        <NavStaticSection items={MAIN_NAV} activeHref={pathname} />
+        <NavStaticSection
+          items={MAIN_NAV.map((item) => {
+            if (item.key === 'inbox') return { ...item, badge: inboxUnread, badgeAccent: true };
+            if (item.key === 'workspace') {
+              return { ...item, active: activeGroupId === null, onSelect: enterPersonalWorkspace };
+            }
+            return item;
+          })}
+          activeHref={pathname}
+        />
 
         <PlanNavSection
           label="กลุ่มของฉัน"
@@ -123,7 +152,8 @@ export function PlannerSidebar() {
           addPlaceholder="ชื่อกลุ่ม แล้วกด Enter"
           variant="chip"
           items={planGroups.map(planGroupToNavItem)}
-          activeHref={pathname}
+          // Highlight the group in scope, on whatever page you are.
+          activeHref={activeGroupId ? `/groups/${activeGroupId}` : ''}
           onAdd={async (name) => {
             const ok = await createPlanGroup(name);
             if (!ok) toast.error('สร้างกลุ่มไม่สำเร็จ');
@@ -142,7 +172,15 @@ export function PlannerSidebar() {
                   <span className="sr-only">เพิ่มกลุ่ม</span>
                 </SidebarGroupAction>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="right" className="w-48">
+              <DropdownMenuContent
+                align="start"
+                side="right"
+                className="w-48"
+                // Radix hands focus back to the "+" trigger on close, which
+                // blurs the just-opened name field and its onBlur closes it
+                // again — so "สร้างกลุ่มใหม่" appeared to do nothing.
+                onCloseAutoFocus={(event) => event.preventDefault()}
+              >
                 <DropdownMenuItem onSelect={() => setTimeout(openNameField, 0)}>
                   <FolderPlus size={13} />
                   สร้างกลุ่มใหม่
@@ -157,7 +195,7 @@ export function PlannerSidebar() {
         />
 
         <PlanNavSection
-          label={activeGroup ? `แผนงานใน ${activeGroup.name}` : 'แผนงาน'}
+          label={activeGroup ? `แผนงานใน ${activeGroup.name}` : 'แผนงานส่วนตัว'}
           addLabel="สร้างแผนงานใหม่"
           addPlaceholder="ชื่อแผนงาน แล้วกด Enter"
           variant="square"
@@ -200,6 +238,9 @@ export function PlannerSidebar() {
         open={joining}
         onOpenChange={setJoining}
         onJoined={() => {
+          // Joining switches into the group's workspace: nothing cached for
+          // the old one applies any more.
+          invalidateApiResource();
           void refetch();
         }}
       />

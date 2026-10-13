@@ -1,8 +1,8 @@
 // app/api/board/trash/route.ts
 // Trash List Controller — Layer 1 (HTTP only)
 //
-// GET /api/board/trash — every soft-deleted task in the organization, most
-// recently deleted first.
+// GET /api/board/trash?planGroupId= — soft-deleted tasks, most recently
+// deleted first; the whole organization, or one group's plans.
 // 🚫 No prisma.* calls. 🚫 No business logic.
 
 import { type NextRequest } from 'next/server';
@@ -10,6 +10,7 @@ import { auth } from '@/lib/server/auth';
 import { arcjetAPI, handleArcjetDecision } from '@/lib/server/arcjet-config';
 import { apiSuccess, apiUnauthorized, apiRateLimited, apiInternalError } from '@/lib/server/api-response';
 import { resolveBoardActor } from '@/lib/server/board-actor';
+import { readPlanGroupScope } from '@/lib/server/scope-param';
 import { listTrashedTasks } from '@/services/board.service';
 
 export async function GET(request: NextRequest) {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     if (!session?.user) return apiUnauthorized();
 
     const { organizationId } = await resolveBoardActor(session.user);
-    const tasks = await listTrashedTasks(organizationId);
+    const tasks = await listTrashedTasks(organizationId, readPlanGroupScope(request));
 
     return apiSuccess(tasks);
   } catch (error) {

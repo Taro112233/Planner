@@ -26,7 +26,7 @@ const PUBLIC_ROUTES = [
 interface RouteRoleRule {
   prefix: string;
   check: (user: CurrentUser) => boolean;
-  redirectTo?: string; // default: '/dashboard'
+  redirectTo?: string; // default: '/home'
 }
 
 const ROLE_RULES: RouteRoleRule[] = [
@@ -96,7 +96,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         console.warn(
           `Access denied: User ${user.id} (${user.role}) attempted to access ${pathname}`
         );
-        router.push(rule.redirectTo || "/dashboard");
+        router.push(rule.redirectTo || "/home");
         return;
       }
     }

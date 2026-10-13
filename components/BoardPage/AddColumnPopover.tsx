@@ -3,7 +3,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -37,28 +36,35 @@ export function AddColumnPopover({ onAddColumn }: AddColumnPopoverProps) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className="h-10 shrink-0 border-dashed">
-          <Plus size={16} className="mr-1.5" />
-          เพิ่มหัวข้อใหม่
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64" align="start">
-        <form onSubmit={handleSubmit} className="space-y-2">
-          <Input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="ชื่อหัวข้อใหม่"
-            disabled={submitting}
-          />
-          <GroupColorSwatches value={color} onChange={setColor} disabled={submitting} />
-          <Button type="submit" className="w-full" size="sm" disabled={submitting || !name.trim()}>
-            เพิ่มหัวข้อ
-          </Button>
-        </form>
-      </PopoverContent>
-    </Popover>
+    <div className="w-[266px] shrink-0">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="w-full rounded-lg bg-surface-tertiary px-2 py-[11px] text-center text-sm font-medium text-content-secondary transition-colors hover:bg-surface-interactive hover:text-content-primary"
+          >
+            ＋ เพิ่มหัวข้อใหม่
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64" align="start">
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <Input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="ชื่อหัวข้อใหม่"
+              disabled={submitting}
+            />
+            <GroupColorSwatches value={color} onChange={setColor} disabled={submitting} />
+            <Button type="submit" className="w-full" size="sm" disabled={submitting || !name.trim()}>
+              เพิ่มหัวข้อ
+            </Button>
+          </form>
+        </PopoverContent>
+      </Popover>
+      <p className="px-1 py-2 text-[11px] leading-relaxed text-content-tertiary">
+        ดับเบิลคลิกชื่อหัวข้อเพื่อเปลี่ยนชื่อ · ⋯ เพื่อเปลี่ยนสีหรือลบ · ลากการ์ดข้ามหัวข้อได้
+      </p>
+    </div>
   );
 }

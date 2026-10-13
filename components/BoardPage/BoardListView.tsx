@@ -25,8 +25,8 @@ export function BoardListView({ board, onOpenTask }: BoardListViewProps) {
   return (
     <div className="flex flex-col">
       {board.groups.map((group) => (
-        <div key={group.id} className="mb-6">
-          <div className="flex items-center gap-2 py-2">
+        <div key={group.id} className="mb-4">
+          <div className="sticky top-0 z-[2] flex items-center gap-2 bg-surface-card px-0.5 pb-1.5 pt-3.5">
             <span
               className="h-2 w-2 rounded-full shrink-0"
               style={{ backgroundColor: resolveGroupColor(group.color) }}
@@ -36,7 +36,7 @@ export function BoardListView({ board, onOpenTask }: BoardListViewProps) {
           </div>
 
           {group.taskItems.length === 0 && (
-            <p className="py-3 pl-4 text-xs text-content-tertiary">No tasks</p>
+            <p className="py-3 pl-4 text-xs text-content-tertiary">ไม่มีงาน</p>
           )}
 
           {group.taskItems.map((task) => (
@@ -56,12 +56,12 @@ function BoardListRow({ task, onOpen }: { task: BoardTaskDto; onOpen: (id: strin
   return (
     <button
       onClick={() => onOpen(task.id)}
-      className="flex w-full items-center gap-3 px-2 py-2.5 border-t border-border-subtle text-left hover:bg-surface-secondary transition-colors"
+      className="flex w-full items-center gap-[11px] border-t border-border-subtle px-1 py-[9px] text-left text-[13.5px] transition-colors hover:bg-surface-secondary"
     >
       <span
         className={[
-          'h-4 w-4 shrink-0 rounded-full border',
-          isComplete ? 'bg-interactive-primary border-interactive-primary' : 'border-border-subtle',
+          'size-[19px] shrink-0 rounded-full border-[1.6px]',
+          isComplete ? 'bg-interactive-primary border-interactive-primary' : 'border-border-secondary',
         ].join(' ')}
       />
       <span
@@ -82,7 +82,11 @@ function BoardListRow({ task, onOpen }: { task: BoardTaskDto; onOpen: (id: strin
       {badge && (
         <span
           className="text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 bg-surface-secondary text-content-secondary"
-          style={badge.color ? { backgroundColor: `${badge.color}1a`, color: badge.color } : undefined}
+          style={
+            badge.color
+              ? { backgroundColor: `color-mix(in oklch, ${badge.color} 14%, transparent)`, color: badge.color }
+              : undefined
+          }
         >
           {badge.name}
         </span>
@@ -91,7 +95,7 @@ function BoardListRow({ task, onOpen }: { task: BoardTaskDto; onOpen: (id: strin
       {task.dueDate && (
         <span className="inline-flex items-center gap-1 text-xs text-content-tertiary shrink-0 w-16 justify-end">
           <Calendar size={11} />
-          {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          {new Date(task.dueDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
         </span>
       )}
 
