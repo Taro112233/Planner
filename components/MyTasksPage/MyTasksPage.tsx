@@ -38,10 +38,10 @@ export function MyTasksPage() {
   const isEmpty = data.openCount === 0;
 
   return (
-    <div className="min-h-screen bg-surface-primary">
+    <div className="min-h-screen bg-surface-canvas">
       <PlannerTopbar title="งานของฉัน" subtitle="งานที่คุณรับผิดชอบ ทุกแผนงาน" />
 
-      <div className="space-y-5 px-5 py-5">
+      <div className="space-y-3.5 px-5 pb-6 pt-1">
         {isEmpty ? (
           <EmptyState
             title="ยังไม่มีงานที่ค้างอยู่"
@@ -54,23 +54,21 @@ export function MyTasksPage() {
               <section
                 key={bucket.key}
                 aria-label={bucket.label}
-                className="rounded-xl border border-border-subtle bg-surface-secondary"
+                className="wcard px-4 py-3.5"
               >
-                <div className="flex items-center justify-between gap-2 border-b border-border-subtle px-4 py-2.5">
-                  <h2 className={`text-xs font-semibold ${bucket.tone}`}>{bucket.label}</h2>
-                  <span className="text-[11px] text-content-tertiary tabular-nums">
-                    {tasks.length} งาน
-                  </span>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <h2 className="text-[12.5px] font-semibold text-content-secondary">{bucket.label}</h2>
+                  <span className={`text-[11.5px] tabular-nums ${bucket.tone}`}>{tasks.length} งาน</span>
                 </div>
 
                 {tasks.length > 0 ? (
-                  <ul className="p-1.5">
+                  <ul>
                     {tasks.map((task) => (
                       <MyTaskRow key={task.id} task={task} overdue={bucket.key === 'overdue'} />
                     ))}
                   </ul>
                 ) : (
-                  <p className="px-4 py-3 text-xs text-content-tertiary">ไม่มีงานในช่วงนี้</p>
+                  <p className="px-1 pb-1 pt-3 text-[12.5px] text-content-tertiary">ไม่มีงานในช่วงนี้</p>
                 )}
               </section>
             );

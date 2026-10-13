@@ -69,10 +69,10 @@ export function JoinCodePanel({ planGroupId, settings, onChange }: JoinCodePanel
   };
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-secondary p-4">
+    <div className="wcard p-4">
       <div className="flex items-center gap-2">
         <KeyRound size={14} className="text-content-tertiary" aria-hidden="true" />
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
+        <h2 className="text-[12.5px] font-semibold text-content-secondary">
           รหัสเข้ากลุ่ม
         </h2>
       </div>

@@ -12,13 +12,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDeleteModal, EmptyState } from '@/components/shared';
 import { PlannerTopbar } from '@/components/PlannerShell';
-import { PRIORITY_STYLES } from '@/components/TaskDetail';
+import { PRIORITY_LABELS, PRIORITY_STYLES } from '@/components/TaskDetail';
 import { formatRelativeTime } from '@/lib/shared/date-utils';
 import { useTrash } from '@/hooks/useTrash';
+import { usePlannerScope } from '@/hooks/usePlannerScope';
 import { TrashPageSkeleton } from './TrashPageSkeleton';
 
 export function TrashPage() {
-  const { tasks, loading, error, mutating, restoreTask, permanentlyDeleteTask } = useTrash();
+  const { scopeQuery } = usePlannerScope();
+  const { tasks, loading, error, mutating, restoreTask, permanentlyDeleteTask } = useTrash(scopeQuery);
   const [purgeTargetId, setPurgeTargetId] = useState<string | null>(null);
 
   if (loading) return <TrashPageSkeleton />;
@@ -36,23 +38,23 @@ export function TrashPage() {
 
   const handleRestore = async (taskId: string) => {
     const ok = await restoreTask(taskId);
-    if (!ok) toast.error('Failed to restore task');
+    if (!ok) toast.error('กู้คืนไม่สำเร็จ');
   };
 
   const handlePurgeConfirm = async () => {
     if (!purgeTargetId) return;
     const ok = await permanentlyDeleteTask(purgeTargetId);
     setPurgeTargetId(null);
-    if (!ok) toast.error('Failed to permanently delete task');
+    if (!ok) toast.error('ลบถาวรไม่สำเร็จ');
   };
 
   const purgeTarget = tasks.find((t) => t.id === purgeTargetId);
 
   return (
-    <div className="min-h-screen bg-surface-primary">
-      <PlannerTopbar title="ถังขยะ" subtitle={`${tasks.length} task${tasks.length === 1 ? '' : 's'}`} />
+    <div className="min-h-screen bg-surface-canvas">
+      <PlannerTopbar showScope title="ถังขยะ" subtitle={`${tasks.length} งาน · กู้คืนได้จนกว่าจะลบถาวร`} />
 
-      <div className="px-5 py-5">
+      <div className="px-5 pb-6 pt-1">
         {tasks.length === 0 ? (
           <EmptyState
             icon={<Trash2 className="w-16 h-16 text-content-secondary" />}
@@ -60,24 +62,28 @@ export function TrashPage() {
             description="task ที่ถูกลบจะแสดงที่นี่ กู้คืนได้ตลอดจนกว่าจะลบถาวร"
           />
         ) : (
-          <div className="space-y-2">
+          <div className="wcard px-4 pb-3.5 pt-1.5">
             {tasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-secondary px-4 py-3"
+                className="flex items-center gap-[11px] border-t border-border-subtle px-1 py-[9px] first:border-t-0"
               >
+                <span className="flex size-[30px] shrink-0 items-center justify-center rounded-[9px] bg-surface-tertiary text-[13px]" aria-hidden="true">
+                  🗑
+                </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-content-primary truncate">{task.title}</p>
-                  <p className="text-xs text-content-tertiary mt-0.5">
-                    {task.groupName} · deleted by {task.deletedByName} ·{' '}
+                  <p className="truncate text-[13.5px] font-medium text-content-primary">{task.title}</p>
+                  <p className="mt-px text-[11px] text-content-tertiary">
+                    {task.planName ? `${task.planName} › ` : ''}
+                    งาน · {task.groupName} · ลบโดย {task.deletedByName} ·{' '}
                     {formatRelativeTime(task.deletedAt)}
                   </p>
                 </div>
 
-                <Badge className={PRIORITY_STYLES[task.priority]}>{task.priority}</Badge>
+                <Badge className={PRIORITY_STYLES[task.priority]}>{PRIORITY_LABELS[task.priority]}</Badge>
 
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   disabled={mutating}
                   onClick={() => handleRestore(task.id)}

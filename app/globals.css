@@ -62,6 +62,9 @@
   --color-surface-tertiary:    oklch(0.24 0.006 286);
   --color-surface-interactive: oklch(0.29 0.006 286);
   --color-surface-overlay:     oklch(0.21 0.006 286 / 0.95);
+  /* Planner (mockup) — gray canvas with raised cards. Zero-ish chroma in dark. */
+  --color-surface-canvas:      oklch(0.15 0.006 286);
+  --color-surface-card:        oklch(0.21 0.006 286);
 
   --color-interactive-primary:         oklch(0.72 0.18 65);
   --color-interactive-primary-hover:   oklch(0.76 0.18 65);
@@ -599,6 +602,9 @@
   --color-surface-tertiary:    oklch(0.24 0.006 286);
   --color-surface-interactive: oklch(0.29 0.006 286);
   --color-surface-overlay:     oklch(0.21 0.006 286 / 0.95);
+  /* Planner (mockup) — gray canvas with raised cards. Zero-ish chroma in dark. */
+  --color-surface-canvas:      oklch(0.15 0.006 286);
+  --color-surface-card:        oklch(0.21 0.006 286);
 
   --color-interactive-secondary:       oklch(0.26 0.006 286);
   --color-interactive-secondary-hover: oklch(0.31 0.006 286);
@@ -712,6 +718,8 @@
   --color-surface-tertiary:    oklch(0.94 0.005 60);
   --color-surface-interactive: oklch(0.92 0.006 60);
   --color-surface-overlay:     oklch(0.99 0 0 / 0.95);
+  --color-surface-canvas:      oklch(0.97 0.002 286);
+  --color-surface-card:        oklch(1 0 0);
 
   --color-interactive-secondary:       oklch(0.94 0.005 60);
   --color-interactive-secondary-hover: oklch(0.91 0.006 60);
@@ -1009,6 +1017,13 @@
 }
 
 /* ===== SEMANTIC UTILITIES ===== */
+
+/* Planner card — the mockup's white, borderless, softly shadowed panel. */
+@utility wcard {
+  background-color: var(--color-surface-card);
+  border-radius: 12px;
+  box-shadow: var(--shadow-elevation-1);
+}
 
 @utility glass-semantic {
   background: var(--glass-bg-semantic);

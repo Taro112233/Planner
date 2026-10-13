@@ -16,14 +16,14 @@ interface PlanCardProps {
 
 export function PlanCard({ plan, onLeaveGroup }: PlanCardProps) {
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-secondary p-4">
+    <div className="wcard px-4 py-3.5">
       <div className="flex items-start justify-between gap-2">
         <Link href={`/plans/${plan.id}`} className="group flex min-w-0 items-center gap-2">
           <span
             className="size-3 shrink-0 rounded-[4px]"
             style={{ backgroundColor: resolveGroupColor(plan.color) }}
           />
-          <span className="truncate text-sm font-semibold text-content-primary group-hover:underline">
+          <span className="truncate text-[15px] font-semibold text-content-primary group-hover:underline">
             {plan.name}
           </span>
         </Link>
@@ -50,8 +50,8 @@ export function PlanCard({ plan, onLeaveGroup }: PlanCardProps) {
         aria-label={`ความคืบหน้า ${plan.completionPct}%`}
       >
         <div
-          className="h-full rounded-full bg-interactive-primary transition-all duration-500"
-          style={{ width: `${plan.completionPct}%` }}
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${plan.completionPct}%`, backgroundColor: resolveGroupColor(plan.color) }}
         />
       </div>
 

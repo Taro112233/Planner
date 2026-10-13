@@ -77,16 +77,16 @@ export function PlanGroupPage({ planGroupId }: PlanGroupPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-surface-primary">
+    <div className="min-h-screen bg-surface-canvas">
       <PlannerTopbar
         title={planGroup.name}
         subtitle={`${overview.plans.length} แผนงาน · ${members.length} สมาชิก`}
       />
 
-      <div className="space-y-6 px-5 py-5">
+      <div className="space-y-3.5 px-5 pb-6 pt-1">
         <section aria-label="แผนงานในกลุ่มนี้" className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
+            <h2 className="text-[12.5px] font-semibold text-content-secondary">
               แผนงานในกลุ่มนี้
             </h2>
             <form onSubmit={handleCreatePlan} className="flex items-center gap-2">
@@ -104,7 +104,7 @@ export function PlanGroupPage({ planGroupId }: PlanGroupPageProps) {
           </div>
 
           {overview.plans.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3.5 sm:grid-cols-2">
               {overview.plans.map((plan) => (
                 <PlanCard key={plan.id} plan={plan} onLeaveGroup={() => handleLeave(plan.id)} />
               ))}
@@ -123,16 +123,16 @@ export function PlanGroupPage({ planGroupId }: PlanGroupPageProps) {
           onChange={setJoinSettings}
         />
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section aria-label="สมาชิกในกลุ่มนี้">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-content-tertiary">
+        <div className="grid items-start gap-3.5 lg:grid-cols-[1fr_1.2fr]">
+          <section aria-label="สมาชิกในกลุ่มนี้" className="wcard px-4 py-3.5">
+            <h2 className="mb-3 text-[12.5px] font-semibold text-content-secondary">
               สมาชิกในกลุ่มนี้
             </h2>
             <PlanGroupMemberList members={members} />
           </section>
 
-          <section aria-label="กิจกรรมในกลุ่ม">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-content-tertiary">
+          <section aria-label="กิจกรรมในกลุ่ม" className="wcard px-4 py-3.5">
+            <h2 className="mb-3 text-[12.5px] font-semibold text-content-secondary">
               กิจกรรมในกลุ่ม
             </h2>
             <TaskActivityFeed items={activities} emptyLabel="ยังไม่มีกิจกรรมในกลุ่มนี้" />

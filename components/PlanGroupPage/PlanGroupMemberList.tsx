@@ -19,10 +19,10 @@ export function PlanGroupMemberList({ members }: PlanGroupMemberListProps) {
   }
 
   return (
-    <ul className="divide-y divide-border-subtle rounded-xl border border-border-subtle bg-surface-secondary">
+    <ul>
       {members.map((member) => (
-        <li key={member.organizationUserId} className="flex items-center gap-3 px-4 py-2.5">
-          <Avatar className="size-7 shrink-0">
+        <li key={member.organizationUserId} className="flex items-center gap-[11px] border-t border-border-subtle px-1 py-[9px] text-[13.5px]">
+          <Avatar className="size-[30px] shrink-0">
             {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
             <AvatarFallback className="text-[10px]">{initials(member.name)}</AvatarFallback>
           </Avatar>

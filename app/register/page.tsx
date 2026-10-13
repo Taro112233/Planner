@@ -139,10 +139,10 @@ export default function RegisterPage() {
       }
 
       toast.success("สร้างบัญชีสำเร็จ!", {
-        description: "ยินดีต้อนรับเข้าสู่ NextJS Starter",
+        description: "ยินดีต้อนรับเข้าสู่ Planner",
       });
 
-      router.push("/dashboard");
+      router.push("/home");
       router.refresh();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "สร้างบัญชีไม่สำเร็จ";

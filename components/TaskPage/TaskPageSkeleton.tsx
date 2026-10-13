@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function TaskPageSkeleton() {
   return (
-    <div className="min-h-screen bg-surface-primary">
+    <div className="min-h-screen bg-surface-canvas">
       <div className="space-y-5 px-5 py-5">
         <Skeleton className="h-4 w-28" />
         <Skeleton className="h-8 w-2/3" />

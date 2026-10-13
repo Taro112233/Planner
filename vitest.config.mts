@@ -27,6 +27,7 @@ export default defineConfig({
     // Test file patterns
     include: [
       'services/**/*.test.ts',
+      'lib/**/*.test.ts',
       '__tests__/**/*.test.ts',
     ],
 

@@ -45,19 +45,19 @@ export function BoardCardChecklist({
   const hidden = rows.length - visible.length;
 
   return (
-    <ul className="mt-2 flex flex-col gap-1" aria-label="งานย่อย">
+    <ul className="-mt-0.5 flex flex-col gap-0.5" aria-label="งานย่อย">
       {visible.map((node) => {
         const marker = (
           <span
             className={[
-              'flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors',
+              'flex size-[19px] shrink-0 items-center justify-center rounded-full border-[1.6px] transition-colors',
               node.isDone
                 ? 'border-interactive-primary bg-interactive-primary'
                 : 'border-border-secondary',
             ].join(' ')}
             aria-hidden="true"
           >
-            {node.isDone && <Check size={10} className="text-content-inverse" strokeWidth={3} />}
+            {node.isDone && <Check size={11} className="text-content-inverse" strokeWidth={3} />}
           </span>
         );
 
@@ -92,8 +92,8 @@ export function BoardCardChecklist({
 
             <span
               className={[
-                'min-w-0 flex-1 truncate text-xs leading-snug',
-                node.isDone ? 'text-content-tertiary line-through' : 'text-content-secondary',
+                'min-w-0 flex-1 truncate text-[13px] leading-snug',
+                node.isDone ? 'text-content-tertiary line-through' : 'text-content-primary',
               ].join(' ')}
             >
               {node.title}

@@ -35,6 +35,10 @@ interface UseCurrentUserReturn {
 
 export function useCurrentUser(): UseCurrentUserReturn {
   const { data: session, isPending, error, refetch } = useSession();
+  // Custom server fields are not inferred by the base Better Auth client.
+  const customFields = session?.user as Partial<Pick<CurrentUser,
+    "firstName" | "lastName" | "phone" | "role" | "status" | "isActive"
+  >> | undefined;
 
   // Transform session user to CurrentUser type
   const sessionUser: CurrentUser | null = session?.user
@@ -43,18 +47,18 @@ export function useCurrentUser(): UseCurrentUserReturn {
         email: session.user.email,
         name: session.user.name,
         firstName:
-          (session.user as any).firstName ||
+          customFields?.firstName ||
           session.user.name?.split(" ")[0] ||
           "",
         lastName:
-          (session.user as any).lastName ||
+          customFields?.lastName ||
           session.user.name?.split(" ").slice(1).join(" ") ||
           "",
         fullName: session.user.name,
-        phone: (session.user as any).phone || null,
-        role: ((session.user as any).role as "USER" | "ADMIN" | "SUPERADMIN") || "USER",
-        status: (session.user as any).status || "ACTIVE",
-        isActive: (session.user as any).isActive ?? true,
+        phone: customFields?.phone || null,
+        role: customFields?.role || "USER",
+        status: customFields?.status || "ACTIVE",
+        isActive: customFields?.isActive ?? true,
         emailVerified: session.user.emailVerified || false,
         image: session.user.image || undefined,
         createdAt: new Date(session.user.createdAt).toISOString(),

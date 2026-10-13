@@ -1,11 +1,13 @@
 // components/PlannerShell/PlannerShell.tsx
 // App shell for planner routes: a collapsible left sidebar plus an inset
-// content area. The global AppHeader (app/layout.tsx) hides itself on
-// /board routes, so this is the only chrome rendered there.
+// content area. Signed-in pages have no other chrome: the top navbar belongs
+// to the landing page alone (app/page.tsx).
 'use client';
 
 import React from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { PlanNavProvider } from '@/hooks/usePlanNav';
+import { PlannerScopeProvider } from '@/hooks/usePlannerScope';
 import { PlannerSidebar } from './PlannerSidebar';
 
 interface PlannerShellProps {
@@ -14,9 +16,13 @@ interface PlannerShellProps {
 
 export function PlannerShell({ children }: PlannerShellProps) {
   return (
-    <SidebarProvider>
-      <PlannerSidebar />
-      <SidebarInset>{children}</SidebarInset>
-    </SidebarProvider>
+    <PlanNavProvider>
+      <PlannerScopeProvider>
+        <SidebarProvider>
+          <PlannerSidebar />
+          <SidebarInset className="bg-surface-canvas">{children}</SidebarInset>
+        </SidebarProvider>
+      </PlannerScopeProvider>
+    </PlanNavProvider>
   );
 }

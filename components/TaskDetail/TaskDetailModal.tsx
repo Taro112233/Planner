@@ -19,7 +19,7 @@ import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { ConfirmDeleteModal } from '@/components/shared';
 import { resolveGroupColor } from '@/lib/shared/group-colors';
-import { PRIORITY_STYLES } from './priorityStyles';
+import { PRIORITY_LABELS, PRIORITY_STYLES } from './priorityStyles';
 import { TaskDetailBody } from './TaskDetailBody';
 import { TaskTitleEditor } from './TaskTitleEditor';
 import { TaskActivityFeed } from './TaskActivityFeed';
@@ -95,7 +95,7 @@ export function TaskDetailModal({
             'fixed z-50 inset-y-0 right-0',
             'max-w-[95vw]',
             'flex flex-col',
-            'bg-surface-primary border-l border-border-subtle',
+            'bg-surface-card border-l border-border-subtle',
             'shadow-2xl',
             'data-[state=open]:animate-in data-[state=open]:slide-in-from-right',
             'data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right',
@@ -127,9 +127,9 @@ export function TaskDetailModal({
             <button
               aria-label="Close task details"
               className={[
-                'absolute top-4 right-4 z-10 rounded-md p-1.5',
-                'text-content-tertiary hover:text-content-primary',
-                'hover:bg-surface-secondary',
+                'absolute top-4 right-4 z-10 rounded-full bg-surface-tertiary p-1.5',
+                'text-content-secondary hover:text-content-primary',
+                'hover:bg-surface-interactive',
                 'transition-colors duration-150',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive-primary',
               ].join(' ')}
@@ -194,7 +194,7 @@ export function TaskDetailModal({
                     className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[task.priority]}`}
                   >
                     <Flag size={10} />
-                    {task.priority}
+                    {PRIORITY_LABELS[task.priority]}
                   </span>
                   {task.dueDate && (
                     <span className="inline-flex items-center gap-1 text-xs text-content-tertiary">

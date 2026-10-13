@@ -87,7 +87,7 @@ export function TaskPage({ taskId }: TaskPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-surface-primary">
+    <div className="min-h-screen bg-surface-canvas">
       <TaskPageHeader
         title={task.title}
         titlePending={isPending('title')}

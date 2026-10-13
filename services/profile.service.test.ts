@@ -2,7 +2,8 @@
 // Unit tests for ProfileService.
 // Prisma is fully mocked — no database connection required.
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import type { UserRole } from '@prisma/client';
 
 // ⚠️  Must be imported BEFORE the service so vi.mock() hoisting intercepts prisma
 import '@/tests/prisma-mock';
@@ -64,7 +65,7 @@ describe('getProfileById', () => {
   it('normalises an unknown role to USER', async () => {
     prismaMock.user.findUnique.mockResolvedValue({
       ...BASE_USER,
-      role: 'UNKNOWN_ROLE' as any,
+      role: 'UNKNOWN_ROLE' as UserRole,
     });
 
     const result = await getProfileById('user-1');

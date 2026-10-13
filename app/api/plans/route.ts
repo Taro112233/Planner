@@ -23,11 +23,13 @@ import {
 import { resolveBoardActor } from '@/lib/server/board-actor';
 import { createPlan, listPlans } from '@/services/plan.service';
 import { GROUP_COLOR_KEYS } from '@/lib/shared/group-colors';
+import { PLAN_TEMPLATE_IDS } from '@/lib/shared/plan-templates';
 
 const CreatePlanSchema = z.object({
   name: z.string().trim().min(1, 'name is required').max(60, 'name is too long'),
   planGroupId: z.string().min(1).nullable().optional(),
   color: z.enum(GROUP_COLOR_KEYS).nullable().optional(),
+  templateId: z.enum(PLAN_TEMPLATE_IDS).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -77,6 +79,7 @@ export async function POST(request: NextRequest) {
     const plan = await createPlan(organizationId, parsed.data.name, {
       planGroupId: parsed.data.planGroupId ?? null,
       color: parsed.data.color ?? null,
+      templateId: parsed.data.templateId,
       actor,
     });
 

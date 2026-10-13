@@ -63,7 +63,9 @@ const TASK_ROW_SELECT = {
       name: true,
       color: true,
       planId: true,
-      plan: { select: { name: true } },
+      plan: {
+        select: { name: true, planGroup: { select: { id: true, name: true, color: true } } },
+      },
     },
   },
 } satisfies Prisma.TaskItemSelect;
@@ -82,6 +84,9 @@ function serializeMyTask(task: TaskRow): MyTaskDto {
     groupColor: task.group?.color ?? null,
     planId: task.group?.planId ?? null,
     planName: task.group?.plan?.name ?? '',
+    planGroupId: task.group?.plan?.planGroup?.id ?? null,
+    planGroupName: task.group?.plan?.planGroup?.name ?? null,
+    planGroupColor: task.group?.plan?.planGroup?.color ?? null,
   };
 }
 

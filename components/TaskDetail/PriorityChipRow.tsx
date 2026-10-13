@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { Flag } from 'lucide-react';
-import { PRIORITY_STYLES } from './priorityStyles';
+import { PRIORITY_LABELS, PRIORITY_STYLES } from './priorityStyles';
 import type { TaskPriority } from '@/types/planner';
 
 export const PRIORITIES: TaskPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
@@ -44,7 +44,7 @@ export function PriorityChipRow({ value, onChange, disabled = false }: PriorityC
               .join(' ')}
           >
             <Flag size={10} />
-            {priority}
+            {PRIORITY_LABELS[priority]}
           </button>
         );
       })}

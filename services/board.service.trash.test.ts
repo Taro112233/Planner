@@ -200,7 +200,7 @@ describe('listTrashedTasks', () => {
         title: 'Design homepage',
         priority: 'MEDIUM',
         deletedAt: new Date('2024-05-01T00:00:00Z'),
-        group: { name: 'Todo' },
+        group: { name: 'Todo', plan: { name: 'แผนงานหลัก' } },
         deletedBy: { firstName: 'Ada', lastName: 'Lovelace' },
       },
     ] as never);
@@ -213,6 +213,7 @@ describe('listTrashedTasks', () => {
         title: 'Design homepage',
         priority: 'MEDIUM',
         groupName: 'Todo',
+        planName: 'แผนงานหลัก',
         deletedAt: '2024-05-01T00:00:00.000Z',
         deletedByName: 'Ada Lovelace',
       },
@@ -240,5 +241,6 @@ describe('listTrashedTasks', () => {
     const result = await listTrashedTasks('org-1');
 
     expect(result[0].deletedByName).toBe('Unknown');
+    expect(result[0].planName).toBeNull();
   });
 });

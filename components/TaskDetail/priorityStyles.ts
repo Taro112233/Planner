@@ -11,3 +11,19 @@ export const PRIORITY_STYLES: Record<TaskPriority, string> = {
   HIGH: 'bg-surface-danger-subtle text-content-danger',
   URGENT: 'bg-surface-danger text-content-inverse',
 };
+
+/** Thai label shown wherever a priority is displayed. */
+export const PRIORITY_LABELS: Record<TaskPriority, string> = {
+  LOW: 'ต่ำ',
+  MEDIUM: 'กลาง',
+  HIGH: 'สูง',
+  URGENT: 'ด่วน',
+};
+
+/** Dot + text colour for the mockup's "● สูง" priority marker. */
+export const PRIORITY_DOT_COLORS: Record<TaskPriority, string> = {
+  LOW: 'var(--color-group-slate)',
+  MEDIUM: 'var(--color-group-orange)',
+  HIGH: 'var(--color-content-danger)',
+  URGENT: 'var(--color-group-pink)',
+};

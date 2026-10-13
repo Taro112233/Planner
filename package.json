@@ -6,7 +6,7 @@
     "dev": "pnpm schema:merge && next dev --turbopack",
     "build": "pnpm schema:merge && pnpm db:generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "bundle": "pnpm dlx repomix",
     "postinstall": "pnpm db:generate",
     "test": "vitest run",

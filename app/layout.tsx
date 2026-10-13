@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { AppHeader } from "@/components/shared/AppHeader";
 import { CookieConsent } from "@/components/CookieConsent";
 import { AuthGuard } from "@/components/AuthGuard";
 
@@ -21,8 +20,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "NextJS Starter",
-  description: "template for nextjs apps",
+  title: "Planner — พื้นที่สำหรับทุกแผนของคุณ",
+  description: "รวมแผน งาน และทีมไว้ในที่เดียว จัดระเบียบงาน ติดตามความคืบหน้า และเดินหน้าไปด้วยกันกับ Planner",
 };
 
 export default function RootLayout({
@@ -59,7 +58,6 @@ export default function RootLayout({
       <body className={inter.variable} suppressHydrationWarning>
           <AuthGuard>
             <div className="min-h-screen bg-background">
-              <AppHeader />
               <main className="relative">{children}</main>
             </div>
             <Toaster />

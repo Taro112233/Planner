@@ -1,6 +1,6 @@
 // This file is auto-generated. Do not edit manually.
 // Edit files in prisma/schemas/ directory instead.
-// Last generated: 2026-09-01T16:34:10.993Z
+// Last generated: 2026-10-13T12:04:53.196Z
 
 generator client {
   provider        = "prisma-client-js"
@@ -401,17 +401,14 @@ model Organization {
 /**
  * A Group is a Kanban column within one Plan. (The mockup's "กลุ่ม" is
  * PlanGroup, in plan.prisma — this is "หัวข้อ".)
- *
- * `planId` is nullable only until the backfill has run; step 3 of the
- * migration in Instruction-group.md §3 makes it required.
  */
 model Group {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  planId String?
-  plan   Plan?   @relation(fields: [planId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  planId String
+  plan   Plan   @relation(fields: [planId, organizationId], references: [id, organizationId], onDelete: Cascade)
 
   name        String
   description String?
@@ -427,13 +424,10 @@ model Group {
   taskItems TaskItem[]
 
   // Column names must be unique within a plan, not across the organization —
-  // two plans may each have a "To Do". Swapped in migration step 3; the
-  // organization-wide constraint stays until then so existing rows keep their
-  // guarantee.
-  @@unique([organizationId, name])
+  // two plans may each have a "To Do".
+  @@unique([planId, name])
   // Composite tenant key used by TaskItem to prevent cross-org relations.
   @@unique([id, organizationId])
-  @@index([organizationId, sortOrder])
   @@index([planId, sortOrder])
   @@map("groups")
 }

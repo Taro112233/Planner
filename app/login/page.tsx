@@ -101,10 +101,10 @@ export default function LoginPage() {
       }
 
       toast.success("เข้าสู่ระบบสำเร็จ!", {
-        description: "ยินดีต้อนรับเข้าสู่ NextJS Starter",
+        description: "ยินดีต้อนรับเข้าสู่ Planner",
       });
 
-      router.push("/dashboard");
+      router.push("/home");
       router.refresh();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "เข้าสู่ระบบไม่สำเร็จ";
@@ -124,7 +124,7 @@ export default function LoginPage() {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/dashboard",
+        callbackURL: "/home",
       });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "เข้าสู่ระบบด้วย Google ไม่สำเร็จ";

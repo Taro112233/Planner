@@ -39,6 +39,12 @@ const PROTECTED_ROUTE_PREFIXES: string[] = [
   '/home',
   '/my-tasks',
   '/join',
+  '/audit',
+  '/inbox',
+  '/reports',
+  '/members',
+  '/templates',
+  '/settings',
   // Add feature-specific routes below as your app grows:
   // '/settings',
   // '/reports',

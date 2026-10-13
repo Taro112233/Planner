@@ -179,6 +179,10 @@ export interface MyTaskDto {
   groupColor: string | null;
   planId: string | null;
   planName: string;
+  /** The plan's group ("กลุ่ม"); all three null for a personal plan. */
+  planGroupId: string | null;
+  planGroupName: string | null;
+  planGroupColor: string | null;
 }
 
 export interface MyTasksDto {
@@ -313,6 +317,8 @@ export interface TrashedTaskDto {
   title: string;
   priority: TaskPriority;
   groupName: string;
+  /** Null only for columns the plan backfill has not reached yet. */
+  planName: string | null;
   deletedAt: string;
   deletedByName: string;
 }
@@ -327,4 +333,73 @@ export interface OrganizationMemberDto {
   name: string;
   avatarUrl: string | null;
   role: 'OWNER' | 'ADMIN' | 'MEMBER';
+}
+
+// ─────────────────────────────────────────────
+// Audit log — GET /api/audit
+// ─────────────────────────────────────────────
+
+/** The mockup's filter chips: ทั้งหมด · ติ๊กเสร็จ · ย้ายสถานะ · หัวข้อ · งาน · แผนงาน. */
+export type AuditCategory = 'all' | 'tick' | 'move' | 'columns' | 'tasks' | 'plans';
+
+/** One audit row: the activity plus who did it (as they were then) and where. */
+export interface AuditEntryDto extends TaskActivityDto {
+  actorId: string;
+  actorRoleSnapshot: 'OWNER' | 'ADMIN' | 'MEMBER';
+  taskTitle: string | null;
+  planName: string | null;
+}
+
+// ─────────────────────────────────────────────
+// Reports — GET /api/reports
+// ─────────────────────────────────────────────
+
+export interface ReportDto {
+  /** Open cards per active member, heaviest first. */
+  workload: { organizationUserId: string; name: string; avatarUrl: string | null; openCount: number }[];
+  /** Cards per column name across every plan, largest first. */
+  columns: { name: string; color: string | null; count: number }[];
+  /** Most subtask ticks within tickerWindowDays, top five. */
+  topTickers: { organizationUserId: string; name: string; avatarUrl: string | null; count: number }[];
+  /** Ticks per day, oldest first, seven entries ending today. */
+  dailyTicks: { date: string; count: number }[];
+  tickerWindowDays: number;
+}
+
+// ─────────────────────────────────────────────
+// Inbox — GET /api/inbox
+// ─────────────────────────────────────────────
+
+/** Something another member did to a card assigned to the viewer. */
+export interface InboxItemDto extends TaskActivityDto {
+  taskItemId: string | null;
+  taskTitle: string | null;
+  planName: string | null;
+}
+
+// ─────────────────────────────────────────────
+// Members — GET /api/members
+// ─────────────────────────────────────────────
+
+export interface WorkspaceMemberDto extends OrganizationMemberDto {
+  email: string;
+  /** Role inside the group in scope; null when listing the whole workspace. */
+  groupRole: 'OWNER' | 'MEMBER' | null;
+  joinedAt: string;
+  openTaskCount: number;
+}
+
+// ─────────────────────────────────────────────
+// Search — GET /api/search?q=
+// ─────────────────────────────────────────────
+
+export interface TaskSearchResultDto {
+  id: string;
+  title: string;
+  groupName: string;
+  groupColor: string | null;
+  planId: string;
+  planName: string;
+  /** Set when the card matched through a subtask rather than its own title. */
+  matchedSubtask: string | null;
 }

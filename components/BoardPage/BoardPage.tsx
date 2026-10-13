@@ -33,6 +33,14 @@ import { BoardTimelineView } from './BoardTimelineView';
 import { TaskCreateMenu } from './TaskCreateMenu';
 import { TaskDetailModal } from '@/components/TaskDetail';
 import { usePlanNav } from '@/hooks/usePlanNav';
+import { useApiResource } from '@/hooks/useApiResource';
+import {
+  EMPTY_BOARD_FILTER,
+  applyBoardFilter,
+  isBoardViewAltered,
+  type BoardFilterState,
+} from '@/lib/shared/board-filter';
+import { BoardFilterBar } from './BoardFilterBar';
 import type { TaskPriority } from '@/types/planner';
 import type { GroupColorKey } from '@/lib/shared/group-colors';
 
@@ -61,6 +69,11 @@ interface BoardPageProps {
   planId?: string;
   /** Shown in the topbar; defaults to "Board" for the default-plan route. */
   planName?: string;
+}
+
+interface WorkspacesPayload {
+  workspaces: { organizationId: string; organizationUserId: string }[];
+  activeOrganizationId: string;
 }
 
 export function BoardPage({ planId, planName }: BoardPageProps = {}) {
@@ -97,6 +110,12 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
   // bring back the unmount-while-open bug this split-state fixed.
   const [panelSession, setPanelSession] = useState(0);
   const [view, setView] = useState<BoardViewMode>('board');
+  const [filter, setFilter] = useState<BoardFilterState>(EMPTY_BOARD_FILTER);
+  // The viewer's membership id in the active workspace, for "เฉพาะงานของฉัน".
+  const { data: workspaces } = useApiResource<WorkspacesPayload>('/api/workspaces');
+  const viewerId =
+    workspaces?.workspaces.find((w) => w.organizationId === workspaces.activeOrganizationId)
+      ?.organizationUserId ?? null;
 
   const handleToggleSubtask = useCallback(
     async (taskId: string, subtaskId: string, desiredIsDone: boolean) => {
@@ -214,7 +233,7 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
 
   const handleAddTask = async (groupId: string, title: string, priority?: TaskPriority) => {
     const ok = await addTask(groupId, title, priority);
-    if (!ok) toast.error('Failed to add task');
+    if (!ok) toast.error('เพิ่มงานไม่สำเร็จ');
   };
 
   const handleAddColumn = async (name: string, color?: GroupColorKey) => {
@@ -265,14 +284,28 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
     );
   };
 
+  // Filtering and sorting only change what is shown; every handler above keeps
+  // working on `board`, the stored state.
+  const altered = isBoardViewAltered(filter);
+  const viewBoard = applyBoardFilter(board, filter);
+  const shownTasks = viewBoard.groups.reduce((n, g) => n + g.taskItems.length, 0);
   const totalTasks = board.groups.reduce((n, g) => n + g.taskItems.length, 0);
-  const subtitle = `${totalTasks} task${totalTasks === 1 ? '' : 's'} · ${board.groups.length} column${board.groups.length === 1 ? '' : 's'}`;
+  const subtitle = altered
+    ? `แสดง ${shownTasks} จาก ${totalTasks} งาน · ${board.groups.length} หัวข้อ`
+    : `${totalTasks} งาน · ${board.groups.length} หัวข้อ`;
 
   return (
-    <div className="min-h-screen bg-surface-primary">
+    <div className="min-h-screen bg-surface-canvas">
       <PlannerTopbar
-        title={planName ?? 'Board'}
+        title={planName ?? plans.find((plan) => plan.id === board.planId)?.name ?? 'บอร์ด'}
         subtitle={subtitle}
+        action={
+          <TaskCreateMenu
+            groups={board.groups}
+            onAddTask={handleAddTask}
+            onUseTemplate={addTaskFromTemplate}
+          />
+        }
         breadcrumb={
           <PlannerBreadcrumb
             planGroups={planGroups}
@@ -285,15 +318,16 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
         }
       />
 
-      <div className="px-5 py-5">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <BoardViewSwitcher value={view} onChange={setView} />
-          <TaskCreateMenu
-            groups={board.groups}
-            onAddTask={handleAddTask}
-            onUseTemplate={addTaskFromTemplate}
-          />
-        </div>
+      <div className="flex flex-wrap items-center gap-3 px-5 pb-3.5">
+        <BoardViewSwitcher value={view} onChange={setView} />
+        <span className="flex-1" />
+        {altered && view === 'board' && (
+          <span className="text-[11px] text-content-tertiary">ปิดตัวกรองและการเรียงเพื่อลากการ์ด</span>
+        )}
+        <BoardFilterBar value={filter} onChange={setFilter} viewerId={viewerId} />
+      </div>
+
+      <div className="border-t border-border-subtle px-5 py-[18px]">
 
         {view === 'board' && (
           <DndContext
@@ -304,9 +338,10 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
             onDragEnd={handleDragEnd}
           >
             <div className="flex items-start gap-4 overflow-x-auto pb-4">
-              {board.groups.map((group, index) => (
+              {viewBoard.groups.map((group, index) => (
                 <BoardColumn
                   key={group.id}
+                  dragDisabled={altered}
                   group={group}
                   siblings={board.groups.filter((g) => g.id !== group.id)}
                   canMoveLeft={index > 0}
@@ -330,9 +365,21 @@ export function BoardPage({ planId, planName }: BoardPageProps = {}) {
           </DndContext>
         )}
 
-        {view === 'list' && <BoardListView board={board} onOpenTask={openTaskPanel} />}
-        {view === 'calendar' && <BoardCalendarView board={board} onOpenTask={openTaskPanel} />}
-        {view === 'timeline' && <BoardTimelineView board={board} onOpenTask={openTaskPanel} />}
+        {view !== 'board' && (
+          <div className="wcard px-4 pb-4 pt-1 sm:px-[22px]">
+            {view === 'list' && <BoardListView board={viewBoard} onOpenTask={openTaskPanel} />}
+            {view === 'calendar' && (
+              <div className="pt-4">
+                <BoardCalendarView board={viewBoard} onOpenTask={openTaskPanel} />
+              </div>
+            )}
+            {view === 'timeline' && (
+              <div className="pt-4">
+                <BoardTimelineView board={viewBoard} onOpenTask={openTaskPanel} />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {panelTaskId && (

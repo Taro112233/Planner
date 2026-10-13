@@ -1,9 +1,10 @@
 // hooks/useMyTasks.ts
-// Cross-plan list of the caller's unfinished work ("งานของฉัน").
+// The caller's open cards across every plan, bucketed by due date. Cached for
+// the session (see useApiResource).
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useApiResource } from '@/hooks/useApiResource';
 import type { MyTasksDto } from '@/types/planner';
 
 export interface UseMyTasksReturn {
@@ -14,27 +15,6 @@ export interface UseMyTasksReturn {
 }
 
 export function useMyTasks(): UseMyTasksReturn {
-  const [data, setData] = useState<MyTasksDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchTasks = useCallback(async () => {
-    try {
-      setError(null);
-      const response = await fetch('/api/my-tasks', { credentials: 'include' });
-      const json = await response.json();
-      if (!response.ok || !json.success) throw new Error(json.error ?? 'Failed to load tasks');
-      setData(json.data as MyTasksDto);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tasks');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchTasks();
-  }, [fetchTasks]);
-
-  return { data, loading, error, refetch: fetchTasks };
+  const { data, loading, error, refetch } = useApiResource<MyTasksDto>('/api/my-tasks');
+  return { data, loading, error, refetch };
 }

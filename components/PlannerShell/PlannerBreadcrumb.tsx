@@ -69,7 +69,7 @@ function useHoverMenu() {
 }
 
 const CRUMB_CLASS =
-  'flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-0.5 text-sm text-content-primary outline-none hover:bg-surface-secondary data-[state=open]:bg-surface-secondary';
+  '-ml-1.5 flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs text-content-tertiary outline-none hover:bg-surface-tertiary hover:text-content-primary data-[state=open]:bg-surface-tertiary';
 
 export function PlannerBreadcrumb({
   planGroups,

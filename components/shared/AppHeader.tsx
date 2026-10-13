@@ -42,6 +42,7 @@ export function AppHeader() {
   const { user, logout } = useCurrentUser();
 
   if (
+    pathname === "/" ||
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/not-found" ||

@@ -1,8 +1,7 @@
 // components/PlannerShell/NavStaticSection.tsx
-// The mockup's fixed nav sections (top group and "การจัดการ"). Destinations
-// that have no page yet render as disabled rows rather than dead links — the
-// same choice the search box already makes — so the rail matches the mockup's
-// shape without shipping 404s.
+// The mockup's fixed nav sections (top group and "การจัดการ"). A row is a
+// link (href), an action (onSelect — e.g. "Workspace ของฉัน", which changes
+// scope rather than page), or, with neither, a disabled placeholder.
 'use client';
 
 import React from 'react';
@@ -25,6 +24,10 @@ export interface StaticNavItem {
   icon: string;
   color: string;
   href?: string;
+  /** An action instead of a link. */
+  onSelect?: () => void;
+  /** Overrides the href match, for action rows. */
+  active?: boolean;
   badge?: number;
   /** Highlight the badge (the mockup does this for unread notifications). */
   badgeAccent?: boolean;
@@ -55,10 +58,18 @@ export function NavStaticSection({ label, items, activeHref }: NavStaticSectionP
                 {item.href ? (
                   <SidebarMenuButton
                     asChild
-                    isActive={activeHref === item.href}
+                    isActive={item.active ?? activeHref === item.href}
                     tooltip={item.label}
                   >
                     <Link href={item.href}>{content}</Link>
+                  </SidebarMenuButton>
+                ) : item.onSelect ? (
+                  <SidebarMenuButton
+                    isActive={item.active}
+                    tooltip={item.label}
+                    onClick={item.onSelect}
+                  >
+                    {content}
                   </SidebarMenuButton>
                 ) : (
                   <SidebarMenuButton

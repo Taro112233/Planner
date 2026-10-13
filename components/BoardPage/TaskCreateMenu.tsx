@@ -145,9 +145,9 @@ export function TaskCreateMenu({ groups, onAddTask, onUseTemplate }: TaskCreateM
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" className="shrink-0 gap-2">
-            New Task/Template
+          <Button size="sm" className="shrink-0 gap-1.5 font-semibold">
             <Plus size={15} />
+            งานใหม่
           </Button>
         </DropdownMenuTrigger>
 

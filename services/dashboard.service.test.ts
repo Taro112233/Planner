@@ -29,7 +29,7 @@ function task(overrides: Record<string, unknown> = {}) {
       name: 'To Do',
       color: 'slate',
       planId: 'plan-1',
-      plan: { name: 'แผนงานหลัก' },
+      plan: { name: 'แผนงานหลัก', planGroup: { id: 'pg-1', name: 'การตลาด', color: 'blue' } },
     },
     ...overrides,
   };
@@ -116,7 +116,20 @@ describe('getMyTasks', () => {
       planName: 'แผนงานหลัก',
       groupName: 'To Do',
       groupColor: 'slate',
+      planGroupId: 'pg-1',
+      planGroupName: 'การตลาด',
+      planGroupColor: 'blue',
     });
+  });
+
+  it('leaves the group empty for a personal plan', async () => {
+    prismaMock.taskItem.findMany.mockResolvedValue([
+      task({ group: { name: 'To Do', color: 'slate', planId: 'plan-2', plan: { name: 'ส่วนตัว', planGroup: null } } }),
+    ] as never);
+
+    const [first] = (await getMyTasks('org-1', 'ou-1')).later;
+
+    expect(first).toMatchObject({ planGroupId: null, planGroupName: null, planGroupColor: null });
   });
 });
 

@@ -66,7 +66,7 @@ export function BoardTimelineView({ board, onOpenTask }: BoardTimelineViewProps)
   if (rows.length === 0) {
     return (
       <div className="py-8 text-center">
-        <p className="text-sm text-content-tertiary">No tasks with a start or due date yet.</p>
+        <p className="text-sm text-content-tertiary">ยังไม่มีงานที่ตั้งวันเริ่มหรือวันกำหนดส่ง</p>
       </div>
     );
   }
@@ -136,8 +136,8 @@ export function BoardTimelineView({ board, onOpenTask }: BoardTimelineViewProps)
 
       {unscheduled.length > 0 && (
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-2">
-            Unscheduled
+          <h3 className="mb-2 text-[12.5px] font-semibold text-content-secondary">
+            ยังไม่กำหนดวัน
           </h3>
           <div className="flex flex-col gap-1">
             {unscheduled.map((task) => (
